@@ -1,5 +1,7 @@
 # llmdoc for Claude Code and Codex
 
+[中文文档](README.zh-CN.md)
+
 `llmdoc` is a doc-driven workflow for both Claude Code and Codex.
 
 - Core skill: `llmdoc`
@@ -178,9 +180,29 @@ This repository contains two separate Codex integration surfaces:
   - [`.codex/agents/`](.codex/agents)
   - [`skills/llmdoc/templates/codex-hooks.json`](skills/llmdoc/templates/codex-hooks.json)
 
-#### Option 1: Use this repository directly in Codex
+#### Option 1: Install from GitHub (recommended)
 
-Use this when you want to work inside this repository and keep the plugin local to the repo checkout.
+Use this when you want the `llmdoc` plugin available across all repositories on your machine.
+
+```bash
+codex plugin marketplace add TokenRollAI/llmdoc
+```
+
+Then:
+
+1. Restart Codex so the new marketplace source is loaded.
+2. Run `/plugins` in Codex.
+3. Find `llmdoc` in the plugin list, select it to open the detail page.
+4. Install the plugin.
+5. Start a new thread in any repository and either:
+   - ask Codex to load the `llmdoc` skill first for normal work
+   - choose `llmdoc-init` when you want the `/llmdoc:init` workflow
+   - choose `llmdoc-update` when you want the `/llmdoc:update` workflow
+   - or type `@` and choose the plugin or one of its bundled skills explicitly
+
+#### Option 2: Use this repository directly (local development)
+
+Use this when you are working inside this repository — contributing to `llmdoc` or testing local changes.
 
 1. Open this repository in Codex.
 2. Make sure [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json) exists.
@@ -196,54 +218,6 @@ Use this when you want to work inside this repository and keep the plugin local 
 8. If you want hooks, copy [`skills/llmdoc/templates/codex-hooks.json`](skills/llmdoc/templates/codex-hooks.json) to `.codex/hooks.json` and adjust the script paths for your machine.
 
 When you open this repository itself, Codex can also use the project-scoped agents under [`.codex/agents/`](.codex/agents) and the agent limits from [`.codex/config.toml`](.codex/config.toml).
-
-#### Option 2: Install `llmdoc` as a personal local plugin
-
-Use this when you want the `llmdoc` plugin to be available across repositories on your machine.
-
-1. Copy this repository into `~/.codex/plugins/llmdoc`:
-
-```bash
-mkdir -p ~/.codex/plugins
-cp -R /absolute/path/to/llmdoc ~/.codex/plugins/llmdoc
-```
-
-2. Add or update `~/.agents/plugins/marketplace.json` so it points at that plugin directory with a `./`-prefixed path relative to your home directory:
-
-```json
-{
-  "name": "local-personal",
-  "interface": {
-    "displayName": "My Local Plugins"
-  },
-  "plugins": [
-    {
-      "name": "llmdoc",
-      "source": {
-        "source": "local",
-        "path": "./.codex/plugins/llmdoc"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    }
-  ]
-}
-```
-
-3. Restart Codex.
-4. In Codex, run `/plugins`.
-5. Find `llmdoc` in the plugin list, select it to open the detail page.
-6. Install the plugin.
-7. Start a new thread in any repository and either:
-   - ask Codex to load the `llmdoc` skill first for normal work
-   - choose `llmdoc-init` when you want the `/llmdoc:init` workflow
-   - choose `llmdoc-update` when you want the `/llmdoc:update` workflow
-   - or type `@` and choose the plugin or one of its bundled skills explicitly
-
-This personal install gives you the plugin and its bundled skill across repositories. The files under [`.codex/agents/`](.codex/agents) and [`.codex/config.toml`](.codex/config.toml) in this repository are still project-scoped and only apply when you open this repository itself.
 
 ## Repo Files
 

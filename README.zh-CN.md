@@ -1,5 +1,7 @@
 # llmdoc for Claude Code 和 Codex
 
+[English](README.md)
+
 `llmdoc` 是一个同时面向 Claude Code 和 Codex 的文档驱动工作流。
 
 - Core skill: `llmdoc`
@@ -178,9 +180,29 @@ codex
   - [`.codex/agents/`](.codex/agents)
   - [`skills/llmdoc/templates/codex-hooks.json`](skills/llmdoc/templates/codex-hooks.json)
 
-#### 方式一：直接在 Codex 里使用这个仓库
+#### 方式一：从 GitHub 安装（推荐）
 
-适合你就在这个仓库里工作，并且希望插件跟着这个 repo 走。
+适合你希望这台机器上的所有仓库都能使用 `llmdoc` 插件。
+
+```bash
+codex plugin marketplace add TokenRollAI/llmdoc
+```
+
+然后：
+
+1. 重启 Codex，让新的 marketplace 源加载进来
+2. 在 Codex 中执行 `/plugins`
+3. 在插件列表中找到 `llmdoc`，选中进入详情页
+4. 安装插件
+5. 在任意仓库里新开一个对话，然后按你的目标选择入口：
+   - 正常工作时，让 Codex 先加载 `llmdoc` skill
+   - 要执行 `/llmdoc:init` 等价流程时，选择 `llmdoc-init`
+   - 要执行 `/llmdoc:update` 等价流程时，选择 `llmdoc-update`
+   - 或者输入 `@`，再显式选择这个插件或它打包进来的 skill
+
+#### 方式二：直接在 Codex 里使用这个仓库（本地开发）
+
+适合你正在这个仓库里工作——参与贡献或测试本地改动。
 
 1. 用 Codex 打开这个仓库
 2. 确认 [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json) 存在
@@ -196,54 +218,6 @@ codex
 8. 如果你需要 hooks，把 [`skills/llmdoc/templates/codex-hooks.json`](skills/llmdoc/templates/codex-hooks.json) 复制到 `.codex/hooks.json`，再按你的机器路径调整脚本路径
 
 当你打开的就是这个仓库时，Codex 还会同时使用 [`.codex/agents/`](.codex/agents) 里的 project-scoped agents，以及 [`.codex/config.toml`](.codex/config.toml) 里的 agent 限制配置。
-
-#### 方式二：把 `llmdoc` 安装成个人全局本地插件
-
-适合你希望这台机器上的其他仓库也能使用 `llmdoc` 插件。
-
-1. 把这个仓库复制到 `~/.codex/plugins/llmdoc`：
-
-```bash
-mkdir -p ~/.codex/plugins
-cp -R /absolute/path/to/llmdoc ~/.codex/plugins/llmdoc
-```
-
-2. 新建或更新 `~/.agents/plugins/marketplace.json`，让它指向这个插件目录。这里的 `source.path` 需要是相对 home 目录、并带 `./` 前缀的路径：
-
-```json
-{
-  "name": "local-personal",
-  "interface": {
-    "displayName": "My Local Plugins"
-  },
-  "plugins": [
-    {
-      "name": "llmdoc",
-      "source": {
-        "source": "local",
-        "path": "./.codex/plugins/llmdoc"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    }
-  ]
-}
-```
-
-3. 重启 Codex
-4. 在 Codex 中执行 `/plugins`
-5. 在插件列表中找到 `llmdoc`，选中进入详情页
-6. 安装插件
-7. 在任意仓库里新开一个对话，然后按你的目标选择入口：
-   - 正常工作时，让 Codex 先加载 `llmdoc` skill
-   - 要执行 `/llmdoc:init` 等价流程时，选择 `llmdoc-init`
-   - 要执行 `/llmdoc:update` 等价流程时，选择 `llmdoc-update`
-   - 或者输入 `@`，再显式选择这个插件或它打包进来的 skill
-
-这种个人安装会让插件和它自带的 skill 在多个仓库里可用；但这个仓库里的 [`.codex/agents/`](.codex/agents) 和 [`.codex/config.toml`](.codex/config.toml) 仍然是 project-scoped 的，只会在你打开这个仓库时生效。
 
 ## 仓库内文件
 
