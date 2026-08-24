@@ -43,25 +43,17 @@ code:
 
 写入之后的收尾按角色分两段：
 
-- `recorder` 只负责跑 `validate` 并修复它报告的全部失败，然后汇报写集；它不执行最终收尾，也不用 `validate` + `fingerprint` 手工拼出 `commit` 的等价序列。
-- 最终收尾归 calling workflow 所有，由它执行一体化 `commit`：validate 门控 → 按 pathspec 提交 `llmdoc/` 写集 → fingerprint → 把 `meta.json` 落成后续小 commit。
-- 只有当工作流明确要求“只刷新 revision、不提交”时，recorder 才自己跑 `fingerprint --update`。
+- `recorder` 只负责跑 `validate` 并修复它报告的全部失败，然后汇报写集；它不执行最终收尾，也不手工拼出 `commit` 的等价序列。只有当工作流明确要求“只刷新 revision、不提交”时，recorder 才自己跑 `fingerprint --update`。
+- 最终收尾归 calling workflow：用 `npx -y @tokenroll/llmdoc commit -m "<message>"` 一次完成（`--all` 做全仓验证并推进 baseline；内部序列见 `cli-runtime/retrieval-and-mutation.mdx`）。
+
+## 合并方式对 revision 的影响
+
+`commit` 烙进 `meta.json` 的 baseline / `validatedRevision` 锚定的是当时分支上的真实 commit hash。任何重写 hash 的操作都会作废刚烙的 revision——除了已知的“不要用 `--amend` 并 meta commit”，rebase merge 与 squash merge 同样会重写 hash，使 `meta.json` 里的 revision 脱离 main 历史。这种破坏是隐性的：本地仓库里旧 commit 对象仍可解析、validate 照常通过，但 CI fresh clone 中该 revision 不可达、validate 必失败。因此带 fingerprint / meta 变更的 PR 必须用 merge commit 合并（保留原 commit），或直接在目标分支上收尾；已经踩中时，在合并后的历史上重跑 `fingerprint --all` 并提交即可修复。
 
 ## dirty worktree 的完成语义
 
-当前仓库常见的一种状态是：稳定文档已经反映了工作树实现，但相关源码尚未提交。此时 `baseline.revision` 与各文档 `validatedRevision` 仍必须锚定真实 HEAD，而不能伪造“工作树 revision”。
-
-结果是：
-
-- `status` / `delta` 会诚实地把这些文档标成 dirty 或 impacted
-- update 可以完成文档同步，但不能把这类状态包装成“已提交且已 fingerprint 的 clean revision”
-- 真正清除 dirty/impacted 信号，要等用户提交相关实现后再运行 fingerprint（或 `llmdoc commit --all`）
+当稳定文档已反映工作树实现、但相关源码尚未提交时，`baseline.revision` 与各文档 `validatedRevision` 仍必须锚定真实 HEAD，不能伪造“工作树 revision”。`status` / `delta` 会诚实地把这些文档标成 dirty 或 impacted；update 可以完成文档同步，但不能把这类状态包装成“已提交且已 fingerprint 的 clean revision”；真正清除 dirty/impacted 信号，要等用户提交相关实现后再运行 fingerprint（或 `llmdoc commit --all`）。
 
 ## 结束条件
 
-update 成功前至少要有：
-
-- 受影响文档已经改写完，且 recorder 的 `validate` 全部通过
-- 由工作流用 `npx -y @tokenroll/llmdoc commit -m "<message>"` 收尾（`--all` 做全仓验证并推进 baseline）：它内置 validate 门控、只按 pathspec 提交 `llmdoc/`、自动 fingerprint 并把 `meta.json` 落成后续小 commit
-
-结果状态固定只有五个：`success`、`no_change`、`dry_run`、`incomplete`、`failed`。不要在 stable docs 里发明第六种“半成功”。工作流的最终汇报以 `validate` 与 `commit` 的结果为准，不再单独汇报一次独立的 fingerprint 步骤。
+update 成功前至少要有：受影响文档已改写完、recorder 的 `validate` 全部通过、工作流已用 `commit` 收尾。结果状态固定只有五个：`success`、`no_change`、`dry_run`、`incomplete`、`failed`，不要在 stable docs 里发明第六种“半成功”。最终汇报以 `validate` 与 `commit` 的结果为准，不再单独汇报一次独立的 fingerprint 步骤。

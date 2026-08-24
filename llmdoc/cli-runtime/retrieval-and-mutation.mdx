@@ -32,7 +32,7 @@ code:
 - `search`：按 front matter、标题和正文检索，返回 snippet。
 - `context --files`：按 `code.paths` 反查文档，再补 `relations.requires` 闭包。
 
-这些命令返回投影，不暴露内部解析对象。`tree` 两种 `--json` 形态及其余命令 payload 由 `cli/schemas/output.schema.json` 定义，并在 `cli/src/lib/output-schema.ts` 中于 stringify 前用 Ajv 2020 校验；`tree`、`index`、`search`、`context`、`delta` 按输出投影估分页，`show` 因含正文而按带 `body` 的输出估算。
+这些命令返回投影，不暴露内部解析对象。`tree` 两种 `--json` 形态及其余命令 payload 由 `cli/schemas/output.schema.json` 定义，在 `cli/src/lib/output-schema.ts` 中于 stringify 前用 Ajv 2020 校验。分页预算按输出投影估算，`show` 因含正文而按带 `body` 的输出估算。
 
 ## 结构性改写命令
 
@@ -60,4 +60,4 @@ code:
 
 ## Web Viewer（`serve`）
 
-`serve` 启动只绑定 127.0.0.1 的前台 HTTP 服务（`cli/src/commands/serve.ts` + `cli/assets/viewer.html`），面向人展示文档列表、requires/related/link 关系图和每份文档的新鲜度；`/api/state` 每次请求实时重算 workspace、delta 与 validate，不落任何持久化状态。`/api/doc` 只按已索引 llmdocPath 查表，天然免疫路径遍历。正文渲染依赖 `marked`，缺失时降级为原文展示。
+`serve` 启动只绑定 127.0.0.1 的前台 HTTP 服务（`cli/src/commands/serve.ts` + `cli/assets/viewer.html`），面向人展示文档列表、requires/related/link 关系图与每份文档的新鲜度。`/api/state` 每次请求实时重算 workspace、delta 与 validate，不落持久化状态；`/api/doc` 只按已索引 llmdocPath 查表，天然免疫路径遍历；正文渲染依赖 `marked`，缺失时降级为原文展示。
