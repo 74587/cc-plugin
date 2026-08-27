@@ -1,5 +1,5 @@
-import { readCommitsWithChangedPathsSince } from "../lib/git.js";
-import { computeGrowthState, analyzeDelta, isImplementationSurfacePath, loadIgnorePatterns } from "../lib/state.js";
+import { readRepositoryRevisionHealth } from "../lib/repository-health.js";
+import { computeGrowthState, analyzeDelta } from "../lib/state.js";
 import { loadWorkspace } from "../lib/workspace.js";
 
 interface StatusOptions {
@@ -11,7 +11,11 @@ export function runStatus(options: StatusOptions): unknown {
   const workspace = loadWorkspace(options.cwd);
   const delta = analyzeDelta(workspace);
   const growth = computeGrowthState(workspace);
-  const relevantCommitsBehindHead = countRelevantCommitsBehindHead(workspace.rootDir, workspace.meta?.baseline.revision ?? null, delta);
+  const relevantCommitsBehindHead = readRepositoryRevisionHealth(
+    workspace.rootDir,
+    workspace.meta?.baseline.revision ?? null,
+    delta.git
+  ).relevantCommitsBehindHead;
 
   if (options.json) {
     return {
@@ -56,27 +60,6 @@ export function runStatus(options: StatusOptions): unknown {
     lines.push(`degraded: ${delta.git.degradedReason}`);
   }
   return lines.join("\n");
-}
-
-// "有效源码落后"计数:baseline..HEAD 中至少触碰一个 implementation surface 路径的提交数。
-// 只改 llmdoc/** 的提交(尤其 commit 收尾的 meta follow-up)不代表知识过期,不应计入。
-function countRelevantCommitsBehindHead(
-  rootDir: string,
-  baselineRevision: string | null,
-  delta: ReturnType<typeof analyzeDelta>
-): number | null {
-  if (!baselineRevision || !delta.git.headRevision || delta.git.baselineBehindHead === null) {
-    return null;
-  }
-  if (delta.git.baselineBehindHead === 0) {
-    return 0;
-  }
-  const commits = readCommitsWithChangedPathsSince(rootDir, baselineRevision, delta.git.headRevision);
-  if (commits === null) {
-    return null;
-  }
-  const ignorePatterns = loadIgnorePatterns(rootDir);
-  return commits.filter((commit) => commit.paths.some((filePath) => isImplementationSurfacePath(filePath, ignorePatterns))).length;
 }
 
 function formatBehindLabel(commitsBehindHead: number | null, relevantCommitsBehindHead: number | null): string {

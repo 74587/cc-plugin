@@ -8,13 +8,17 @@ code:
     - cli/src/lib/state.ts
     - cli/src/lib/git.ts
     - cli/src/lib/output-schema.ts
+    - cli/src/lib/repository-health.ts
     - cli/src/lib/schema.ts
+    - cli/src/lib/viewer-state.ts
     - cli/src/commands/validate.ts
     - cli/src/commands/status.ts
     - cli/src/commands/delta.ts
     - cli/src/commands/fingerprint.ts
     - cli/src/commands/hook.ts
     - cli/tests/cli.test.ts
+    - cli/tests/viewer-state.test.ts
+    - cli/tests/viewer-http.test.ts
     - cli/schemas/doc-frontmatter.schema.json
     - cli/schemas/meta.schema.json
     - cli/schemas/output.schema.json
@@ -34,7 +38,9 @@ CLI 只接受最近 Git 根直属的 `llmdoc/`，避免跨仓库误认；没有 
 
 `delta` 先用 `code.paths` 找直接受影响文档，再沿 `relations.requires` 反向扩展一跳为 needs-review。未映射路径、反向复核、影响过广、dirty 关联代码或失效 revision 会把建议模式抬到 deep。命中表示必须复核，不表示正文必须变化。
 
-revision 推进前必须确认 git 可推进且目标文档关联实现无 dirty；全量推进还要求所有实现表面 clean。`commit --verified` 让语义仍成立的文档只刷新有效性锚点。fingerprint 之后由 CLI 自己创建的纯 `llmdoc/meta.json` follow-up 不代表知识再次过期，重复收尾应成为 no-op。
+revision 推进前必须确认 git 可推进且目标文档关联实现无 dirty；全量推进还要求所有实现表面 clean。`commit --verified` 让语义仍成立的文档只刷新有效性锚点。
+
+`status` 与 Viewer 共用 repository health 判定：原始 commits-behind 保留为 Git 历史可观测值，知识陈旧度只计其中触碰 implementation surface 的 relevant commit。behind 全为 metadata-only 时仍是 knowledge-clean，不能直接把 `behindHead > 0` 渲染成 stale；无法可靠计算 relevant 数量时必须保持 unknown/degraded，而不是乐观判 fresh。fingerprint 之后由 CLI 自己创建的纯 `llmdoc/meta.json` follow-up 因此不代表知识再次过期，重复收尾应成为 no-op。
 
 ## Hook 信号边界
 

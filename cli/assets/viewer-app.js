@@ -1,0 +1,243 @@
+import { createDetailRenderer } from "./viewer-detail.js";
+import { createGraphController } from "./viewer-graph.js";
+import { colorOf, createTopicColors, documentName, matchesSearch, STATUS_COLOR } from "./viewer-model.js";
+
+const elements = {
+  repo: document.getElementById("repo"),
+  statDocs: document.getElementById("stat-docs"),
+  statBaseline: document.getElementById("stat-baseline"),
+  statValidate: document.getElementById("stat-validate"),
+  statDelta: document.getElementById("stat-delta"),
+  refresh: document.getElementById("refresh"),
+  modeTopics: document.getElementById("mode-topics"),
+  modeDocs: document.getElementById("mode-docs"),
+  search: document.getElementById("search"),
+  documentList: document.getElementById("doc-list"),
+  graphWrap: document.getElementById("graph-wrap"),
+  graph: document.getElementById("graph"),
+  graphHint: document.getElementById("graph-hint"),
+  legend: document.getElementById("legend"),
+  graphEmpty: document.getElementById("graph-empty"),
+  detail: document.getElementById("detail"),
+  detailContainer: document.querySelector("#detail .inner"),
+  detailClose: document.getElementById("detail-close"),
+  error: document.getElementById("load-error"),
+  zoomIn: document.getElementById("zoom-in"),
+  zoomOut: document.getElementById("zoom-out"),
+  zoomReset: document.getElementById("zoom-reset")
+};
+
+let state = null;
+let selectedDocument = null;
+let selectedTopic = null;
+let mode = "topics";
+let topicColors = new Map();
+let resizeTimer = null;
+
+const graph = createGraphController({
+  svg: elements.graph,
+  hint: elements.graphHint,
+  legend: elements.legend,
+  empty: elements.graphEmpty,
+  onSelectTopic: selectTopic,
+  onSelectDocument: selectDocument
+});
+
+const detail = createDetailRenderer({
+  panel: elements.detail,
+  container: elements.detailContainer,
+  onSelectDocument: selectDocument,
+  getState: () => state
+});
+
+async function loadState() {
+  elements.refresh.disabled = true;
+  elements.refresh.setAttribute("aria-busy", "true");
+  hideError();
+  try {
+    const response = await fetch("/api/state", { headers: { accept: "application/json" } });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const nextState = await response.json();
+    if (!Array.isArray(nextState.nodes) || !Array.isArray(nextState.edges)) throw new Error("服务返回了无效状态");
+    state = nextState;
+    topicColors = createTopicColors(state.nodes);
+    if (selectedDocument && !state.nodes.some((node) => node.path === selectedDocument)) selectedDocument = null;
+    if (selectedTopic && !state.nodes.some((node) => node.topic === selectedTopic)) selectedTopic = null;
+    renderHeader();
+    renderSidebar();
+    renderGraph();
+    if (selectedDocument) await detail.showDocument(selectedDocument, state);
+    else if (selectedTopic) detail.showTopic(selectedTopic, state, topicColors);
+  } catch (error) {
+    showError(error instanceof Error ? error.message : String(error));
+  } finally {
+    elements.refresh.disabled = false;
+    elements.refresh.removeAttribute("aria-busy");
+  }
+}
+
+function renderHeader() {
+  elements.repo.textContent = `/ ${state.repository}`;
+  elements.statDocs.textContent = `${state.nodes.length} docs · ~${state.growth.currentTotalEstimatedTokens} tokens`;
+
+  const baseline = state.baseline;
+  const shortRevision = baseline.revision?.slice(0, 7);
+  if (!baseline.revision) {
+    setChip(elements.statBaseline, "baseline 缺失", "bad");
+  } else if (baseline.degradedReason || baseline.relevantBehindHead === null) {
+    setChip(elements.statBaseline, `baseline ${shortRevision} · 状态未知`, "warn");
+  } else if (baseline.relevantBehindHead > 0) {
+    setChip(elements.statBaseline, `baseline ${shortRevision} · ${baseline.relevantBehindHead} 个源码提交待复核`, "warn");
+  } else if (baseline.metadataOnlyBehind) {
+    setChip(elements.statBaseline, `baseline ${shortRevision} · metadata-only，知识干净`, "ok");
+  } else {
+    setChip(elements.statBaseline, `baseline ${shortRevision} · 最新`, "ok");
+  }
+
+  const validation = state.validate;
+  setChip(
+    elements.statValidate,
+    validation.ok ? `validate ok${validation.warnings ? ` · ${validation.warnings} warn` : ""}` : `validate ${validation.errors} errors`,
+    validation.ok ? "ok" : "bad"
+  );
+
+  const stale = state.nodes.filter((node) => node.status !== "fresh").length;
+  const unmapped = state.delta.unmappedCommittedPaths.length + state.delta.unmappedDirtyPaths.length;
+  if (stale) setChip(elements.statDelta, `${stale} 份待同步 · 建议 ${state.delta.suggestedMode}`, "warn");
+  else if (unmapped) setChip(elements.statDelta, `${unmapped} 个未映射变化 · 建议 ${state.delta.suggestedMode}`, "warn");
+  else setChip(elements.statDelta, "知识面新鲜", "ok");
+}
+
+function setChip(chip, text, stateClass) {
+  chip.textContent = text;
+  chip.className = `chip ${stateClass}`;
+}
+
+function renderSidebar() {
+  if (!state) return;
+  const query = elements.search.value;
+  const matchingNodes = state.nodes.filter((node) => matchesSearch(node, query));
+  const groups = new Map([["", matchingNodes.filter((node) => !node.topic)]]);
+  for (const node of matchingNodes) {
+    if (!node.topic) continue;
+    const documents = groups.get(node.topic) ?? [];
+    documents.push(node);
+    groups.set(node.topic, documents);
+  }
+
+  const fragment = document.createDocumentFragment();
+  for (const [topic, nodes] of groups) {
+    if (!nodes.length) continue;
+    const label = document.createElement(topic ? "button" : "div");
+    label.className = "group-label";
+    if (topic) {
+      label.type = "button";
+      const swatch = element("span", "swatch");
+      swatch.style.backgroundColor = colorOf(topicColors, topic);
+      label.append(swatch, `${topic}/`);
+      label.addEventListener("click", () => selectTopic(topic));
+    } else {
+      label.textContent = "root";
+    }
+    fragment.append(label);
+
+    for (const node of nodes) {
+      const item = element("button", `doc-item${selectedDocument === node.path ? " active" : ""}`);
+      item.type = "button";
+      item.title = node.path;
+      item.setAttribute("aria-current", selectedDocument === node.path ? "true" : "false");
+      const dot = element("span", "dot");
+      dot.style.backgroundColor = STATUS_COLOR[node.status];
+      dot.style.color = STATUS_COLOR[node.status];
+      item.append(dot, element("span", "name", documentName(node.path)), element("span", "kind", node.kind));
+      item.addEventListener("click", () => selectDocument(node.path));
+      fragment.append(item);
+    }
+  }
+  if (!fragment.childNodes.length) fragment.append(element("div", "empty-list", "没有匹配的文档"));
+  elements.documentList.replaceChildren(fragment);
+}
+
+function renderGraph() {
+  if (!state) return;
+  graph.render(graphInput());
+}
+
+function graphInput() {
+  return { state, mode, selected: selectedDocument, topicColors };
+}
+
+function setMode(nextMode, { render = true } = {}) {
+  mode = nextMode;
+  elements.modeTopics.className = mode === "topics" ? "on" : "";
+  elements.modeDocs.className = mode === "docs" ? "on" : "";
+  elements.modeTopics.setAttribute("aria-pressed", String(mode === "topics"));
+  elements.modeDocs.setAttribute("aria-pressed", String(mode === "docs"));
+  if (render && state) renderGraph();
+}
+
+function selectTopic(topic) {
+  selectedTopic = topic;
+  selectedDocument = null;
+  renderSidebar();
+  if (mode !== "topics") setMode("topics");
+  graph.highlight(`topic:${topic}`);
+  detail.showTopic(topic, state, topicColors);
+}
+
+async function selectDocument(path) {
+  selectedDocument = path;
+  selectedTopic = null;
+  renderSidebar();
+  if (mode !== "docs") setMode("docs");
+  else graph.highlight(path);
+  await detail.showDocument(path, state);
+}
+
+function showError(message) {
+  elements.error.textContent = `Viewer 加载失败：${message}`;
+  elements.error.hidden = false;
+}
+
+function hideError() {
+  elements.error.hidden = true;
+  elements.error.textContent = "";
+}
+
+function element(tagName, className, text) {
+  const node = document.createElement(tagName);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+elements.search.addEventListener("input", renderSidebar);
+elements.refresh.addEventListener("click", loadState);
+elements.modeTopics.addEventListener("click", () => setMode("topics"));
+elements.modeDocs.addEventListener("click", () => setMode("docs"));
+elements.zoomIn.addEventListener("click", () => graph.zoomBy(1.15));
+elements.zoomOut.addEventListener("click", () => graph.zoomBy(.87));
+elements.zoomReset.addEventListener("click", graph.resetView);
+elements.detailClose.addEventListener("click", detail.closePanel);
+
+window.addEventListener("keydown", (event) => {
+  const target = event.target;
+  const isEditing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable;
+  if (event.key === "/" && !isEditing) {
+    event.preventDefault();
+    elements.search.focus();
+  } else if (event.key === "Escape") {
+    detail.closePanel();
+    if (document.activeElement === elements.search) elements.search.blur();
+  }
+});
+
+const resizeObserver = new ResizeObserver(() => {
+  if (!state) return;
+  window.clearTimeout(resizeTimer);
+  resizeTimer = window.setTimeout(() => graph.resize(graphInput()), 120);
+});
+resizeObserver.observe(elements.graphWrap);
+
+setMode("topics", { render: false });
+loadState();
