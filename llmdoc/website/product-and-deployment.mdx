@@ -1,0 +1,32 @@
+---
+description: 官网的产品职责、公开知识投影与 Cloudflare 静态部署边界。
+kind: architecture
+relations:
+  requires:
+    - architecture.mdx
+    - cli-runtime/retrieval-and-mutation.mdx
+    - cli-runtime/state-and-validation.mdx
+    - plugin-packaging/claude-and-codex.mdx
+    - plugin-packaging/development-and-release.mdx
+    - workflows/init-and-update.mdx
+    - workflows/prune-and-upgrade.mdx
+code:
+  paths:
+    - website/**
+---
+
+# 官网产品与部署边界
+
+## 公开投影，不是第二套工具面
+
+官网负责解释 llmdoc 的产品模型，并以中英文 Docs 和机器可读入口公开核心概念、工作流及 CLI 使用边界。CLI 与 tracked `llmdoc/` 仍分别是能力和仓库知识的 canonical surface；网站内容是便于人和 Agent 阅读的手工投影，不能反向定义新的 CLI 语义。
+
+为官网或其他新入口新增工具能力前，先核对 canonical CLI 是否已经提供对应能力。已有能力默认在新入口中解释、演示或链接；只有存在独立用户场景、清晰数据边界和足够维护收益时才创建新实现，避免复制语义和形成第二真相源。
+
+官网因此不接收或读取用户仓库，也不提供远程 Viewer。Viewer 属于 CLI 的本地只读投影，经 `serve` 绑定 loopback；官网只说明这一能力，不复制其仓库扫描、状态或文档渲染数据面。
+
+## 静态部署边界
+
+`website/` 是与 CLI 开发工作区分离构建的静态站点，通过 Cloudflare Static Assets 发布。部署面没有应用后端、持久状态或仓库数据 binding；改变这一点属于产品和安全边界变更，必须重新评估数据所有权、访问控制与第二真相源风险，而不是作为普通页面功能加入。
+
+中英文页面与 `llms.txt` 共同组成公开知识投影。CLI、宿主安装、知识门或维护工作流的语义变化时，应复核这些表面的语义一致性；当前一致性依赖人工维护，不能假设已有机械 parity 保证。
