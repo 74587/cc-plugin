@@ -1,12 +1,12 @@
 ---
 name: update
-description: Explicit V3 sync of existing llmdoc knowledge against the current repository.
+description: Explicit V3 semantic verification and sync of existing llmdoc knowledge against the current repository.
 argument-hint: '[summary] [--scope <topic|path...>] [--reflection [<candidate...>]]'
 ---
 
 # /llmdoc:update
 
-Use this command when repository knowledge has changed and tracked `llmdoc/` must be synchronized.
+Use this command when repository changes require tracked `llmdoc/` knowledge to be verified or synchronized.
 
 Load the `llmdoc` skill before broad exploration. CLI commands below run as `npx -y @tokenroll/llmdoc <cmd>`.
 
@@ -35,26 +35,32 @@ This command does not authorize source-code edits.
    - Read each explicitly declared `--reflection` candidate. When the flag has no paths, read all Markdown candidates directly under `.llmdoc-tmp/reflections/pending/`. A pending candidate is an update signal even when code delta is empty.
 
 2. Gate reflection candidates before promotion.
-   - Require trigger evidence, the wrong assumption or action, root cause, a preventive rule, scope, confidence, and any existing-doc match.
-   - Verify factual claims against current code, tests, or stable docs. A user correction is strong evidence of user intent, but not automatic proof of a repository fact.
+   - Require a verifiable trigger, wrong assumption or action, root cause, preventive rule, scope, confidence, and existing-doc match.
+   - Verify repository claims against code, tests, or stable docs. User corrections prove intent, not repository facts.
    - Reject transient tool failures, one-task preferences, and unverified speculation. Use `search` and targeted `show` to find an existing owner before creating a document.
 
 3. Choose the lightest sufficient path from delta plus any qualified candidates.
-   - Light: impacted docs or a candidate's owner are already mapped and facts are straightforward.
-   - Deep: unmapped files, an unclear lesson owner or root cause, boundary changes, conflicting facts, or broad impact.
+   - Light: owners are mapped and facts are clear.
+   - Deep: files are unmapped, owner/root cause is unclear, boundaries changed, facts conflict, or impact is broad.
+   - This choice controls evidence gathering only. It does not decide whether prose must change.
 
-4. Execute the update.
-   - Light: `recorder` updates the impacted docs directly from `delta`, qualified reflection candidates, `context`, `search`, and targeted `show` reads.
-   - Deep: `investigator` writes a scoped report first, then `recorder` rewrites the affected docs using that report plus the CLI evidence.
+4. Decide the semantic outcome with `recorder`.
+   - Treat `delta` and candidates as review evidence, not a write list or prose to copy.
+   - Rewrite only false/incomplete claims or new conclusions that pass the Stable Knowledge Gate. Reflection candidates must pass both gates.
+   - If the document remains true and the change adds only reconstructable evidence, mark it verified unchanged.
+   - Light: `recorder` decides from targeted CLI reads. Deep: `investigator` reports evidence, then `recorder` applies the gate.
+   - Scaffold brand-new docs with `new`; register docs that already exist as files with `adopt <path...>` — never hand-edit `meta.json` or recreate the file through `new`.
 
 5. Finalize.
-   - Run `commit -m "<message>"` (add `--all` for a full-repository verification, `--no-verify` in repos with heavy git hooks). It gates on validate, commits the `llmdoc/` write-set, refreshes fingerprints, and lands the `meta.json` change as a follow-up commit — never hand-roll this sequence out of `validate` plus `fingerprint`, and never `--amend` (that rewrites the hash fingerprints just recorded).
-   - Re-check `status` when you need a final stale/clean signal.
+   - If prose changed, run `commit -m "<message>"`, adding `--verified <path...>` for reviewed unchanged docs. If all stayed unchanged, run `commit --verified <path...>`. Full verification uses `--all`, never with `--verified`.
+   - `commit` gates on validate, commits any `llmdoc/` prose write-set, refreshes the changed and verified fingerprints, and lands `meta.json` separately. Never hand-roll this sequence out of `validate` plus `fingerprint`, and never `--amend` (that rewrites the hash fingerprints just recorded).
+   - `commit` preflights the fingerprint preconditions before creating any commit: if mapped source is still dirty it fails closed with the worktree untouched. Commit or clean the related source first, then rerun `commit` — do not fall back to a manual sequence.
+   - Re-check `status` when you need a final stale/clean signal. After a successful finalize, `N commits behind HEAD, metadata-only; knowledge clean` is the expected end state (the meta follow-up commit), not staleness — do not chase it with another update.
 
 6. Fold durable lessons into stable docs directly.
    - Put reusable cautions, invariants, and workflow fixes into the relevant architecture or guide docs.
    - Reflection candidates are a temporary evidence queue, not a tracked reflection kind or a second knowledge tree.
-   - After `success`, move consumed candidates to `.llmdoc-tmp/reflections/resolved/YYYY-MM-DD/`. After `no_change`, resolve them only when the rule is already covered or the candidate failed the quality gate. Leave candidates pending after `incomplete` or `failed`.
+   - On `success`, resolve consumed candidates. On `no_change`, resolve only already-covered or rejected candidates. Leave them pending after `incomplete` or `failed`.
 
 ## State Invariants
 
@@ -64,8 +70,8 @@ This command does not authorize source-code edits.
 
 ## Result Contract
 
-- `success`: docs updated, validated, and state advanced according to scope.
-- `no_change`: the declared scope was fully verified and no write was needed.
+- `success`: the declared scope was semantically verified, any necessary prose changes were committed, and applicable revisions advanced.
+- `no_change`: the declared scope was already current, so neither prose nor revision state needed to change.
 - `dry_run`: the user asked for a dry run, or only status/delta/investigation/planning output was produced without writing `llmdoc/`; do not advance state.
 - `incomplete`: evidence was insufficient, user input is required, or the scope belongs to a different explicit maintenance workflow; roll back writes and do not advance state.
 - `failed`: update failed and doc writes were rolled back.
@@ -76,5 +82,5 @@ Always report:
 - the `status` and `delta` signals used
 - any investigation report path
 - each reflection candidate and its disposition (`promoted`, `already_covered`, `dismissed`, or `pending`)
-- the stable docs changed by `recorder`
+- the stable docs changed and the docs verified unchanged by `recorder`
 - the `commit` result — validate gate, fingerprint refresh, and the meta follow-up commit — or why finalization was skipped

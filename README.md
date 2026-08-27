@@ -71,6 +71,8 @@ Tracked validity lives in `llmdoc/meta.json`.
 
 Temporary process records live under `.llmdoc-tmp/` and are not part of tracked knowledge.
 
+Stable bodies are decision-bearing memory, not implementation inventories. Keep decisions and rationale, boundaries, invariants, cross-module contracts, non-obvious failures, and risky repeatable workflows. A `delta` hit requires review; it does not require a prose change. Facts that are cheap to reconstruct from source, schema, help, tests, or generated configuration stay in those canonical surfaces.
+
 ## CLI Commands
 
 | Command | Purpose |
@@ -84,6 +86,7 @@ Temporary process records live under `.llmdoc-tmp/` and are not part of tracked 
 | `npx @tokenroll/llmdoc delta` | changed code to impacted-doc closure |
 | `npx @tokenroll/llmdoc validate` | schema, structure, relation, link, and code-path validation |
 | `npx @tokenroll/llmdoc fingerprint --update <path...> \| --all` | refresh validated revisions in `llmdoc/meta.json` |
+| `npx @tokenroll/llmdoc commit [--verified <path...> \| --all]` | validate, commit any prose changes, and refresh changed or verified-unchanged revisions |
 | `npx @tokenroll/llmdoc new <path> --kind <kind>` | scaffold a new V3 doc |
 | `npx @tokenroll/llmdoc adopt <path...>` | register existing docs into `llmdoc/meta.json` without rewriting bodies |
 | `npx @tokenroll/llmdoc mv <from> <to>` | move a doc and update references |
@@ -105,21 +108,22 @@ Creates the first V3 knowledge set for a repository that does not already have l
 
 ### `update`
 
-Synchronizes tracked knowledge with the current repository state.
+Semantically verifies tracked knowledge against the current repository state.
 
 - the assistant should suggest it after meaningful durable knowledge changes, but only after user confirmation
 - after confirmation, the workflow may complete without repeated confirmation unless the scope expands materially
 - `--reflection` consumes pending high-signal correction or failure candidates even when source delta is empty
-- the command chooses the lightest sufficient path from CLI signals:
-  - direct recorder update for clearly bounded changes
-  - investigator plus recorder when impact is unclear or structural
+- CLI signals choose the lightest sufficient evidence path, not whether prose must change
+- the recorder rewrites only claims that changed or pass the stable-knowledge gate
+- docs that remain true are finalized as verified unchanged instead of accumulating new evidence
 
 ### `prune`
 
-Reduces duplicate or bloated knowledge after update.
+Reduces duplicate, fragmented, bloated, or cheaply reconstructable knowledge after update.
 
 - explicit command only
 - may be suggested when the growth gate is hit
+- a clean duplicate report does not replace semantic density review
 - requires confirmation before execution
 
 ### `upgrade`
@@ -244,16 +248,20 @@ This project uses llmdoc V3 as persistent engineering context.
 - `init` / `update` / `prune` / `upgrade` are explicit workflows: suggest them
   when relevant, run only after user confirmation; never suggest `upgrade`.
 - Stable knowledge lives in `llmdoc/`; never hand-edit `llmdoc/meta.json`.
-  Finalize doc changes with `commit`, which gates on validate and fingerprints
-  in one step; otherwise go through `fingerprint` / `new` / `mv`. Scratch
-  belongs in `.llmdoc-tmp/`.
+  A delta hit requires review, not prose. Keep decisions, boundaries, invariants,
+  contracts, and non-obvious failure semantics; leave reconstructable evidence in
+  source, schema, help, tests, or `.llmdoc-tmp/`. Finalize unchanged reviewed docs
+  with `commit --verified`, which validates and fingerprints them without inventing
+  a body diff. Other ledger changes go through `commit` / `fingerprint` / `new` /
+  `adopt` / `mv`.
 - Treat an explicit user correction, a verified approach failure, major rework,
   or an instruction violation as a reflection signal when it exposes a reusable
   lesson. Capture a privacy-safe candidate under
   `.llmdoc-tmp/reflections/pending/`; never store the full transcript.
 - A pending reflection candidate is an update signal even with no code delta.
   After user confirmation, run the update workflow with `--reflection`; verify
-  and merge the lesson into its existing architecture or guide owner.
+  the candidate, apply the same stable-knowledge gate, and merge only a durable
+  rule into its existing architecture or guide owner.
 - After work that changes durable architecture, contracts, or workflows,
   suggest running the update workflow.
 ```

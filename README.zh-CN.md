@@ -71,6 +71,8 @@ tracked 有效性记录在 `llmdoc/meta.json`：
 
 临时过程记录放在 `.llmdoc-tmp/`，不属于 tracked knowledge。
 
+稳定正文是承载决策的工程记忆，不是实现库存。优先保留决策及理由、边界、不变量、跨模块契约、非显然失败语义和高风险可重复工作流。`delta` 命中只要求复核，不要求改正文；能从源码、schema、help、测试或生成配置快速恢复的事实留在这些 canonical surface。
+
 ## CLI 命令表
 
 | 命令 | 作用 |
@@ -84,6 +86,7 @@ tracked 有效性记录在 `llmdoc/meta.json`：
 | `npx @tokenroll/llmdoc delta` | 从代码变更推导受影响文档闭包 |
 | `npx @tokenroll/llmdoc validate` | 校验 schema、结构、关系、链接与 code paths |
 | `npx @tokenroll/llmdoc fingerprint --update <path...> \| --all` | 刷新 `llmdoc/meta.json` 中的 validated revisions |
+| `npx @tokenroll/llmdoc commit [--verified <path...> \| --all]` | 校验、提交必要正文，并刷新正文变化或 verified-unchanged 文档的 revision |
 | `npx @tokenroll/llmdoc new <path> --kind <kind>` | 脚手架生成新的 V3 文档 |
 | `npx @tokenroll/llmdoc adopt <path...>` | 无损登记已有文档到 `llmdoc/meta.json`(不改正文) |
 | `npx @tokenroll/llmdoc mv <from> <to>` | 移动文档并更新引用 |
@@ -105,21 +108,22 @@ tracked 有效性记录在 `llmdoc/meta.json`：
 
 ### `update`
 
-把 tracked knowledge 同步到当前仓库状态。
+对照当前仓库状态做 tracked knowledge 的语义复核与同步。
 
 - assistant 应该在出现可持久化的新知识后建议执行，但必须先得到一次确认
 - 确认后，除非 scope 实质性扩张，否则流程可以完整跑完而不重复确认
 - `--reflection` 会消费强信号纠正或失败候选，即使代码 delta 为空也会触发更新判断
-- 命令会根据 CLI 信号选择最轻但足够的路径：
-  - 影响明确时直接由 recorder 更新
-  - 影响不清或涉及结构变化时走 investigator + recorder
+- CLI 信号只决定最轻且足够的取证路径，不决定正文是否必须变化
+- recorder 只改写已经失效或通过稳定知识准入门槛的内容
+- 原文仍成立时按 verified unchanged 收尾，不把新证据追加进正文
 
 ### `prune`
 
-在 update 之后收敛重复或膨胀的知识。
+在 update 之后收敛重复、碎片、膨胀或可快速重建的知识。
 
 - 只允许显式调用
 - 命中 growth gate 时可以被建议
+- 没有重复候选不等于知识密度合格，仍需语义审查
 - 执行前需要一次确认
 
 ### `upgrade`
@@ -241,14 +245,17 @@ Claude Code 与 Codex 用户由插件承担这一切（hooks、operating skill�
   等实时事实。不要把所有检索命令跑成固定序列；上下文足够就停。
 - `init` / `update` / `prune` / `upgrade` 是显式工作流：可以建议、须经用户
   确认后执行；永不主动建议 `upgrade`。
-- 稳定知识在 `llmdoc/`；不要手工编辑 `llmdoc/meta.json`。文档改动用 `commit`
-  收尾——它内置 validate 门控并自动 fingerprint；其余台账变更走 `fingerprint` /
-  `new` / `mv`。临时材料放 `.llmdoc-tmp/`。
+- 稳定知识在 `llmdoc/`；不要手工编辑 `llmdoc/meta.json`。`delta` 命中要求复核，
+  不要求改正文；正文只保留决策、边界、不变量、契约和非显然失败语义，可重建
+  证据留在源码、schema、help、测试或 `.llmdoc-tmp/`。复核后正文未变的文档用
+  `commit --verified` 收尾；其他台账变更走 `commit` / `fingerprint` / `new` /
+  `adopt` / `mv`。
 - 当用户明确纠正、验证证明方案错误、发生重大返工或违反项目指令，且其中
   暴露出可复用经验时，将它视为反思强信号；只在
   `.llmdoc-tmp/reflections/pending/` 保存隐私安全的候选，不保存完整对话。
 - pending 反思候选即使没有代码 delta 也会触发 update 判断。获得用户确认后，
-  用 `--reflection` 运行 update，验证并合并到既有 architecture 或 guide owner。
+  用 `--reflection` 运行 update，验证候选并应用同一稳定知识准入门槛，只把耐久规则
+  合并到既有 architecture 或 guide owner。
 - 完成改变架构、契约或工作流的任务后，建议执行 update 工作流。
 ```
 

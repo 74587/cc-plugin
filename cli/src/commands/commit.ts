@@ -9,6 +9,7 @@ interface CommitOptions {
   cwd: string;
   message?: string;
   all?: boolean;
+  verified?: string[];
   noVerify?: boolean;
   json?: boolean;
 }
@@ -19,6 +20,18 @@ export function runCommit(options: CommitOptions): unknown {
   const rootDir = findProjectRoot(options.cwd);
 
   const preflightWorkspace = loadWorkspace(rootDir);
+  const verifiedPaths = uniquePaths(
+    (options.verified ?? []).map((value) => (value.startsWith("llmdoc/") ? value.slice("llmdoc/".length) : value))
+  );
+  if (options.all && verifiedPaths.length > 0) {
+    throw new CliError("commit 不能同时使用 --all 与 --verified。");
+  }
+  for (const docPath of verifiedPaths) {
+    if (!preflightWorkspace.documentsByLlmdocPath.has(docPath)) {
+      throw new CliError(`文档不存在: ${docPath}`);
+    }
+  }
+
   const issues = validateWorkspace(preflightWorkspace);
   const errors = issues.filter((issue) => issue.severity === "error");
   if (errors.length > 0) {
@@ -26,7 +39,8 @@ export function runCommit(options: CommitOptions): unknown {
   }
 
   const porcelain = runGit(rootDir, ["status", "--porcelain", "--", "llmdoc"]);
-  if (!porcelain.trim()) {
+  const hasLlmdocChanges = Boolean(porcelain.trim());
+  if (!hasLlmdocChanges && !options.all && verifiedPaths.length === 0) {
     return options.json ? { status: "no_change", commits: [], updated: [] } : "no_change: llmdoc/ 无待提交变更";
   }
   const changedDocPaths = porcelain
@@ -36,20 +50,34 @@ export function runCommit(options: CommitOptions): unknown {
     .map((filePath) => (filePath.includes(" -> ") ? filePath.split(" -> ").pop()! : filePath))
     .filter((filePath) => filePath.startsWith("llmdoc/") && filePath.endsWith(".mdx"));
 
+  const existingChangedDocPaths = changedDocPaths
+    .map((filePath) => filePath.slice("llmdoc/".length))
+    .filter((llmdocPath) => preflightWorkspace.documentsByLlmdocPath.has(llmdocPath));
+  const targetPaths = uniquePaths([...existingChangedDocPaths, ...verifiedPaths]);
+
   const verifyFlags = options.noVerify ? ["--no-verify"] : [];
   // 在创建任何 commit 前预检 fingerprint 的全部前置条件(git 可推进、关联源码无 dirty):
   // 预检失败时 fail-closed,工作树保持调用前状态,避免留下 docs 已提交但 meta 未刷新的半完成状态。
-  const preflightDocPaths = changedDocPaths
-    .map((filePath) => filePath.slice("llmdoc/".length))
-    .filter((llmdocPath) => preflightWorkspace.documentsByLlmdocPath.has(llmdocPath));
   try {
     assertRevisionAdvancePreconditions({
       workspace: preflightWorkspace,
-      llmdocPaths: preflightDocPaths,
+      llmdocPaths: targetPaths,
       updateAll: options.all ?? false
     });
   } catch (error) {
     throw new CliError(`fingerprint 预检未通过,未创建任何 commit: ${(error as Error).message}`, 70);
+  }
+
+  if (changedDocPaths.length === 0) {
+    return commitMetaOnly({
+      rootDir,
+      workspace: preflightWorkspace,
+      verifiedPaths,
+      updateAll: options.all ?? false,
+      hasLlmdocChanges,
+      verifyFlags,
+      json: options.json ?? false
+    });
   }
 
   runGit(rootDir, ["add", "--", "llmdoc"]);
@@ -63,7 +91,7 @@ export function runCommit(options: CommitOptions): unknown {
     .filter((llmdocPath) => workspace.documentsByLlmdocPath.has(llmdocPath));
   const { meta, updatedPaths } = updateMetaRevisions({
     workspace,
-    llmdocPaths: existingDocPaths,
+    llmdocPaths: uniquePaths([...existingDocPaths, ...verifiedPaths]),
     updateAll: options.all ?? false
   });
   writeMeta(workspace.metaPath, meta);
@@ -83,6 +111,81 @@ export function runCommit(options: CommitOptions): unknown {
     `committed: ${docsCommit.slice(0, 7)} (docs) + ${metaCommit.slice(0, 7)} (meta)`,
     `fingerprints: ${updatedPaths.length} document(s)${options.all ? ", baseline advanced" : ""}`
   ].join("\n");
+}
+
+function commitMetaOnly(input: {
+  rootDir: string;
+  workspace: ReturnType<typeof loadWorkspace>;
+  verifiedPaths: string[];
+  updateAll: boolean;
+  hasLlmdocChanges: boolean;
+  verifyFlags: string[];
+  json: boolean;
+}): unknown {
+  const { rootDir, workspace, verifiedPaths, updateAll, hasLlmdocChanges, verifyFlags, json } = input;
+  const headRevision = runGit(rootDir, ["rev-parse", "HEAD"]).trim();
+  const requestedPaths = updateAll ? workspace.documents.map((document) => document.llmdocPath) : verifiedPaths;
+  const refreshNeeded = updateAll
+    ? !revisionIsCurrent(rootDir, workspace.meta!.baseline.revision, headRevision) ||
+      requestedPaths.some((docPath) =>
+        !revisionIsCurrent(rootDir, workspace.meta!.documents[docPath]?.validatedRevision ?? null, headRevision)
+      )
+    : requestedPaths.some((docPath) =>
+        !revisionIsCurrent(rootDir, workspace.meta!.documents[docPath]?.validatedRevision ?? null, headRevision)
+      );
+
+  if (!hasLlmdocChanges && !refreshNeeded) {
+    return json
+      ? { status: "no_change", commits: [], updated: [] }
+      : "no_change: requested fingerprints are already current";
+  }
+
+  let updatedPaths: string[] = [];
+  if (refreshNeeded) {
+    const result = updateMetaRevisions({
+      workspace,
+      llmdocPaths: verifiedPaths,
+      updateAll
+    });
+    writeMeta(workspace.metaPath, result.meta);
+    updatedPaths = result.updatedPaths;
+  }
+
+  runGit(rootDir, ["add", "--", "llmdoc/meta.json"]);
+  runGit(rootDir, ["commit", ...verifyFlags, "-m", "chore(llmdoc): refresh fingerprints", "--", "llmdoc/meta.json"]);
+  const metaCommit = runGit(rootDir, ["rev-parse", "HEAD"]).trim();
+
+  if (json) {
+    return {
+      status: "success",
+      commits: [metaCommit],
+      updated: updatedPaths,
+      baselineAdvanced: updateAll
+    };
+  }
+  return [
+    `committed: ${metaCommit.slice(0, 7)} (meta)`,
+    `fingerprints: ${updatedPaths.length} document(s)${updateAll ? ", baseline advanced" : ""}`
+  ].join("\n");
+}
+
+// commit 自身会在 fingerprint 锚点之后创建一个只修改 meta.json 的 follow-up commit。
+// 这种差异不代表知识又过期了,否则重复 commit 会无限追逐自己创建的 meta commit。
+function revisionIsCurrent(rootDir: string, revision: string | null, headRevision: string): boolean {
+  if (!revision) {
+    return false;
+  }
+  if (revision === headRevision) {
+    return true;
+  }
+  const changedPaths = runGit(rootDir, ["diff", "--name-only", `${revision}..${headRevision}`, "--"])
+    .split(/\r?\n/)
+    .filter(Boolean);
+  return changedPaths.every((filePath) => filePath === "llmdoc/meta.json");
+}
+
+function uniquePaths(paths: string[]): string[] {
+  return [...new Set(paths)].sort();
 }
 
 function runGit(rootDir: string, args: string[]): string {

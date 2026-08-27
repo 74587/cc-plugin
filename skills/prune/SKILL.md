@@ -1,12 +1,12 @@
 ---
 name: prune
-description: "Explicit V3 convergence pass that removes duplicated or fragmented llmdoc knowledge."
+description: "Explicit V3 convergence pass that removes duplicated, fragmented, or low-value reconstructable llmdoc content."
 argument-hint: "[--scope <topic|path...>] [summary]"
 ---
 
 # /llmdoc:prune
 
-Use this command only when existing `llmdoc/` knowledge needs convergence after growth, duplication, or fragmentation.
+Use this command only when existing `llmdoc/` knowledge needs convergence after growth, duplication, fragmentation, or accumulation of reconstructable implementation inventory.
 
 Load the `llmdoc` skill before broad exploration. CLI commands below run as `npx -y @tokenroll/llmdoc <cmd>`.
 
@@ -29,20 +29,24 @@ This command does not authorize source-code edits.
 ## Workflow
 
 1. Run `prune --report`.
-   - Use the report as the primary convergence signal.
+   - Use the report as the primary mechanical signal for scale, duplication, and fragmentation.
    - The CLI only reports; it never rewrites docs on its own.
+   - A clean duplicate/fragment report does not prove good knowledge density; semantic review remains the recorder's job.
 
 2. Decide the convergence plan with `recorder`.
    - Merge duplicated docs.
    - Rewrite fragmented docs when a clearer topic boundary exists.
-   - Delete docs only when their knowledge is preserved elsewhere or proven obsolete.
+   - Apply the Stable Knowledge Gate sentence by sentence. Remove command/file inventories, current-state evidence, and other facts that a reader can cheaply recover from canonical sources.
+   - Preserve decisions and rationale, boundaries, invariants, cross-module contracts, non-obvious failures, and risky repeatable workflows.
+   - Keep a transitional fact only when omission would be unsafe, and record the condition that retires it.
+   - Delete a document when it has no unique durable knowledge; canonical source, schema, help, or tests are valid destinations for discarded evidence. Do not copy low-value content elsewhere merely to justify deletion.
 
 3. Re-validate the result.
    - Run `validate`.
    - Re-run `prune --report` and compare document/token scale with the first report.
-   - Confirm the surviving union of `code.paths` has not lost covered implementation paths.
+   - Confirm surviving stable concepts retain accurate `code.paths`. Do not attach unrelated paths merely to preserve a coverage metric; call out any intentional coverage reduction.
    - Finalize with `commit -m "<message>"`, which fingerprints the surviving docs and lands the `meta.json` follow-up commit automatically.
-   - Report `success` and refresh convergence only when scale actually declines without coverage loss; otherwise repair, roll back, or report `no_change` as appropriate.
+   - Report `success` only when durable knowledge density or routing materially improves. Refresh convergence only when scale declines without losing justified mappings; otherwise repair, roll back, or report `no_change` as appropriate.
 
 ## State Invariants
 
@@ -52,7 +56,7 @@ This command does not authorize source-code edits.
 
 ## Result Contract
 
-- `success`: convergence work completed, validated, and convergence state updated.
+- `success`: knowledge density or routing materially improved, the result validated, and convergence state was updated when applicable.
 - `no_change`: the declared scope was fully verified and no justified convergence action remained.
 - `dry_run`: the user asked for a dry run, or only `prune --report`/planning output was produced without writing `llmdoc/`; do not advance state.
 - `incomplete`: evidence was insufficient, user input is required, or the request belongs to a different explicit workflow; roll back writes and do not advance state.
@@ -63,4 +67,4 @@ Always report:
 - the `prune --report` signal that justified the run
 - which docs were merged, rewritten, or deleted
 - the `validate` and `commit` results
-- whether convergence improved without losing coverage
+- how reconstructable evidence was reduced without losing durable decisions or contracts

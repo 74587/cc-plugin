@@ -200,9 +200,10 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("commit")
-    .description("一体化收尾:validate 门控 → 提交 llmdoc 写集 → fingerprint → meta 小 commit")
+    .description("一体化收尾:validate 门控 → 可选提交正文 → 刷新 changed/verified revision → meta 小 commit")
     .option("-m, --message <message>", "docs commit message")
     .option("--all", "fingerprint 全部文档并推进 baseline")
+    .option("--verified <paths...>", "正文复核后无需改写,刷新指定文档的 validatedRevision")
     .option("--no-verify", "透传 git commit --no-verify(husky 等重钩子仓库)")
     .action(async (commandOptions) => {
       const { runCommit } = await import("./commands/commit.js");
@@ -215,6 +216,7 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
             cwd: rootDir,
             message: commandOptions.message,
             all: commandOptions.all,
+            verified: commandOptions.verified,
             noVerify: commandOptions.verify === false
           }),
           globalOptions.json
