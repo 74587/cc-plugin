@@ -221,15 +221,24 @@ for (const name of ["investigator", "reflector", "recorder"]) {
   }
 }
 
-// 6) hooks.json:合法 JSON 且所有命令使用 scoped 包名 + 非交互安装确认
+// 6) hooks.json:合法 JSON；npm alias 强制从 scoped registry package 解析 runtime，
+// 避免消费仓库中同名但缺少 bin 的本地/file dependency 遮蔽 hook CLI。
 const hooks = readJson("hooks/hooks.json");
 if (hooks) {
-  const commands = JSON.stringify(hooks).match(/"command":"([^"]+)"/g) ?? [];
-  for (const raw of commands) {
-    const command = raw.slice(11, -1);
-    if (!command.startsWith("npx -y @tokenroll/llmdoc")) {
-      errors.push(`hooks.json: 命令必须以 'npx -y @tokenroll/llmdoc' 开头: ${command}`);
+  const runtime = "npx -y --package=@tokenroll/llmdoc-hook-runtime@npm:@tokenroll/llmdoc -- llmdoc hook";
+  const expectedCommands = new Set([
+    `${runtime} session-start`,
+    `${runtime} stop`,
+    `${runtime} compact`
+  ]);
+  const commands = (JSON.stringify(hooks).match(/"command":"([^"]+)"/g) ?? []).map((raw) => raw.slice(11, -1));
+  for (const command of commands) {
+    if (!expectedCommands.delete(command)) {
+      errors.push(`hooks.json: 非法或重复 hook runtime 命令: ${command}`);
     }
+  }
+  for (const missing of expectedCommands) {
+    errors.push(`hooks.json: 缺少防本地遮蔽的 hook runtime 命令: ${missing}`);
   }
 }
 

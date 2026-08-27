@@ -108,6 +108,9 @@ flowchart LR
 `context --files` 会逐个判断输入并报告 `unmappedFiles`；非空的 impacted
 结果不会再掩盖同批查询中未映射的其他路径。
 
+插件生命周期 hook 会通过 npm package alias 调用同一个 scoped CLI，避免宿主仓库中
+同名但尚未构建 bin 的本地或 `file:` 依赖遮蔽 hook runtime；日常交互命令仍使用上面的短写法。
+
 ```bash
 # 展开知识地图
 npx -y @tokenroll/llmdoc tree --docs

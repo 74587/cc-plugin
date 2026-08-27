@@ -59,6 +59,51 @@ for (const hookCase of hookCases) {
   }
 }
 
+// The direct dist checks above prove current hook semantics. Execute the actual
+// plugin commands too: npm package resolution is a separate launcher boundary,
+// and a same-name local/file dependency can otherwise shadow the scoped CLI.
+const hookConfig = JSON.parse(fs.readFileSync(path.join(root, "hooks/hooks.json"), "utf8"));
+const launcherCases = [
+  { event: "SessionStart", stdin: JSON.stringify({ source: "startup" }), json: false },
+  { event: "Stop", stdin: "{}", json: true },
+  { event: "PreCompact", stdin: "{}", json: true }
+];
+
+for (const launcherCase of launcherCases) {
+  const configured = hookConfig.hooks?.[launcherCase.event]?.flatMap((group) => group.hooks ?? []) ?? [];
+  if (configured.length !== 1 || typeof configured[0]?.command !== "string") {
+    failures.push(`hook launcher ${launcherCase.event}: expected exactly one command`);
+    continue;
+  }
+  const result = spawnSync(configured[0].command, {
+    cwd: root,
+    encoding: "utf8",
+    input: launcherCase.stdin,
+    shell: true,
+    timeout: 120_000
+  });
+  if (result.error) {
+    failures.push(`hook launcher ${launcherCase.event}: ${result.error.message}`);
+    continue;
+  }
+  if (result.status !== 0) {
+    failures.push(
+      `hook launcher ${launcherCase.event}: exited ${result.status}: ${(result.stderr ?? "").trim()}`
+    );
+    continue;
+  }
+  const output = result.stdout.trim();
+  if (launcherCase.json) {
+    try {
+      JSON.parse(output);
+    } catch {
+      failures.push(`hook launcher ${launcherCase.event}: output is not valid JSON`);
+      continue;
+    }
+  }
+  process.stdout.write(`hook launcher ${launcherCase.event}: ok\n`);
+}
+
 if (failures.length > 0) {
   process.stderr.write(`${failures.join("\n")}\n`);
   process.exit(1);
