@@ -1,5 +1,5 @@
 ---
-description: Claude 与 Codex 表面的分工：Claude 根表面是手工维护源，三角色、Retrieval/Reflection Gate 与 Codex 兼容表面保持一致。
+description: Claude canonical surface、Codex 生成面、共同 CLI runtime 与跨宿主一致性不变量。
 kind: architecture
 code:
   paths:
@@ -20,39 +20,16 @@ code:
 
 # Claude 与 Codex 表面
 
-## Claude 是当前手工维护源
+## 真相源与共同 runtime
 
-仓库根已经按 Claude 插件形态组织：
+Claude 根插件是手工维护的 canonical surface：skills 定义 Retrieval/Reflection/Stable Knowledge Gate 与显式工作流，三个 agent 定义调查、候选捕获和正式写入边界。Codex 的 skills、agents、manifest 与 marketplace 是转换产物，不得成为独立设计源。
 
-- `.claude-plugin/*.json` 提供插件元数据与 marketplace 入口
-- `skills/llmdoc/SKILL.md` 是手工维护的 operating skill 与 Retrieval/Reflection Gate 源
-- `skills/init|update|prune|upgrade/SKILL.md` 是四个显式工作流的薄壳 SOP
-- `agents/investigator.md`、`agents/reflector.md` 与 `agents/recorder.md` 是角色契约
-- 根 `hooks/hooks.json` 只负责把生命周期事件转给 `npx -y @tokenroll/llmdoc hook ...`
+两种宿主都把确定性行为收敛到外部 `@tokenroll/llmdoc` CLI。统一调用形式是 `npx -y @tokenroll/llmdoc <cmd>`：不向消费仓库写依赖；需要复现时在包名中固定版本；不得退回会解析错误包名或交互挂起的裸调用。
 
-`.claude-plugin/marketplace.json` 也是跨宿主 marketplace 身份的 canonical authoring surface。公共 marketplace 名是 `llmdoc-plugin`，其中的插件名是 `llmdoc`，所以 Claude 安装坐标为 `llmdoc@llmdoc-plugin`；文案应保持跨宿主定位。
+## 生成与一致性不变量
 
-## CLI 是共同 runtime
+转换必须在临时副本生成后替换式同步，因为生成器不保证清除陈旧输出。Codex 角色文本不手工维护；宿主特有 front matter/TOML 可以不同，实际 skill 与 agent 指令正文必须与 Claude canonical 一致。
 
-不管宿主是 Claude 还是 Codex，检索与路由、state/delta/fingerprint、hook 信号、轻量结构改写都收敛到 `@tokenroll/llmdoc`。包装层变更时，先检查命令文档是否只保留判断性内容；不要把 diff、schema 校验或 git 逻辑重新写进 prompt。
+`scripts/check-codex-surface.mjs` 在 CI 中机械校验版本/marketplace 身份、五个 skill 与三个 agent 的正文一致性、Reflection Gate 约束和 hook 调用。人工 checklist 只补宿主 UI policy 与信任模型等无法从正文等价判断的部分。
 
-所有提示词表面（含根 `hooks/hooks.json`）统一以 `npx -y @tokenroll/llmdoc <cmd>` 按需调用这个项目外部工具：`-y` 在缺包时非交互地把 scoped 包取到 npm 缓存，不触碰被服务项目的 `package.json` 或 lockfile；需要固定版本时在 npx 包名中 pin，而不是执行会改写项目依赖清单的安装命令。不得使用裸 `npx`（缺包时交互式挂住）或 `npx --no-install`（缺包直接失败）。每个表面只声明一次调用形式，正文引用短命令名。
-
-Retrieval Gate 与 Reflection Gate（完整语义见 `architecture.mdx`）都是需要跨宿主保持语义一致的判断性契约：Claude canonical skill 与生成的 `.agents/skills/llmdoc/SKILL.md`、三个 Claude 角色契约与生成的 `.codex/agents/*.toml`、以及中英文 README 配方，都必须保持 gate 边界与上述 `npx -y` 调用语义一致；宿主 front matter 和措辞可以不同。
-
-## Codex 兼容面的实际要求
-
-方向是“Claude canonical，Codex 兼容/转换表面”。ACPlugin 生成的是：
-
-- `.agents/plugins/marketplace.json` catalog；其 marketplace 名必须与 Claude canonical 一致为 `llmdoc-plugin`，插件名保持 `llmdoc`
-- `.codex-plugin/plugin.json` manifest
-- `.agents/skills/` 下的五个 skills（operating + 四个工作流，与 Claude 侧同名一比一转换，无 `cmd-*` 前缀；`upgrade` 的 `disable-model-invocation` 同时映射为 frontmatter 与 `agents/openai.yaml` 的 `allow_implicit_invocation: false`）
-- `.codex/agents/` 下的 project-scoped `investigator` / `reflector` / `recorder` TOML
-
-Codex 插件原生支持 hooks：默认从插件根 `hooks/hooks.json` 读取（Claude 兼容 schema，SessionStart/Stop/PreCompact 与 `additionalContextLimit` 均支持），manifest 无需 `hooks` 字段。本仓库根既是 Claude 又是 Codex 插件根，同一份 hooks.json 不经 ACPlugin 复制、一份两用。插件 hooks 是非托管的，用户安装后须经 `/hooks` 审查信任才会运行。
-
-acplugin 重生成注意：必须用 ≥1.6.1——旧版会把 `model` 硬编码为 `inherit` 并降级 hooks，若 npx 只解析到旧版本，不要盲跑重生成。manifest version 读取 `.claude-plugin/marketplace.json`，bump 版本时不要漏掉它。转换必须在临时副本运行后替换式同步，acplugin 不清理上次的陈旧输出。当前 `.agents/skills/` 与 `.codex/agents/` 是随 canonical 变更手工替换式同步的（正文与 Claude 侧逐字节一致、TOML 可解析），尚未经修复版重生成确认。
-
-`scripts/check-codex-surface.mjs` 除了拒绝 marketplace 身份不一致，还要求三个角色跨宿主齐备、Reflector 只能写 `.llmdoc-tmp/reflections/pending/` 且不得写 tracked `llmdoc/`，并检查两侧 operating/update skills 都保留 Reflection Gate 与 `--reflection` 契约；`tests/parity-checklist.md` 继续承担发布前人工核对。
-
-维护时要遵守两点：四个生成表面必须继续反映与 Claude 相同的公开契约，至少在 marketplace 身份、命令集、Retrieval/Reflection Gate、授权语义和 hook 行为上保持一致；不手工维护第二份 Codex 角色文本——Codex 角色文件是从三个 Claude 角色契约再生成的兼容表面，不是独立真相源。
+hooks 位于共享插件根，一份配置供两种宿主使用；它们保持 fail-open、只读，且由安装宿主按自己的信任模型启用。

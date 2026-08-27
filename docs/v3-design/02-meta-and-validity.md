@@ -71,16 +71,19 @@ Delta 计算(`llmdoc delta`)完全基于 git:
 
 ## 4. 写入协议:git-based,不自建事务
 
-所有对 `llmdoc/` 的正式写入(init / update / prune / upgrade)遵循:
+所有对 `llmdoc/` 的正式写入和 revision 推进(init / update / prune / upgrade)遵循:
 
 ```text
 1. 前置检查   git status -- llmdoc/ 必须 clean
               (有未提交修改 → 停止,提示用户先处理,不覆盖)
-2. 写入       Recorder 直接编辑 llmdoc/ 与 meta.json
+2. 语义复核   Recorder 判断正文需改写或 verified unchanged
+              只直接编辑 .mdx;meta.json 永远由 CLI 写
 3. 校验门控   llmdoc validate 必须通过
               (schema、链接悬空、CodeRef path、ledger 一致性、体积告警)
 4. 失败回滚   git checkout -- llmdoc/  (回到写前状态)
-5. 提交       校验通过后正常 git commit(或留给用户提交)
+5. 收尾       正文有改动 → llmdoc commit [-m] [--verified <未改文档...>]
+              正文全未改 → llmdoc commit --verified <复核文档...>
+              全量复核   → llmdoc commit --all
 ```
 
 对比原 spec 的取舍:
@@ -98,8 +101,8 @@ Delta 计算(`llmdoc delta`)完全基于 git:
 
 | 状态 | 含义 | baseline |
 |---|---|---|
-| `success` | 声明 scope 内验证与写入完整 | 按 3.3 规则推进 |
-| `no_change` | scope 完整验证,无需写入 | 按 3.3 规则推进 |
+| `success` | scope 内语义复核完整,必要正文已改,适用 revision 已推进 | 按 3.3 规则推进 |
+| `no_change` | scope 已经是 current,正文与 revision 均无需变化 | 不推进 |
 | `dry_run` | 只产出报告/方案,未写 `llmdoc/` | 不推进 |
 | `incomplete` | 证据不足或需用户决策,已写内容已 revert | 不推进 |
 | `failed` | 工具或校验错误,已 revert | 不推进 |

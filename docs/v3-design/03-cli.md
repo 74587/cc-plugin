@@ -33,9 +33,9 @@ CLI 是 V3 的 Runtime 实体:所有确定性、可测试、重复出现的工�
 | `llmdoc status` | baseline vs HEAD、失效/待复核文档数、dirty 信号、growth 概况。hook 与人共用 |
 | `llmdoc delta [--scope <topic\|path...>]` | 变更代码 → 受影响文档闭包 + unmapped paths + light/deep 建议信号(见 04) |
 | `llmdoc validate` | 全量校验:front matter schema、kind 合法、禁 index.mdx、层级深度(禁嵌套)、链接/requires 悬空、CodeRef path 存在、ledger 与文件树一致、体积告警。CI 与写入门控共用 |
-| `llmdoc fingerprint --update <path...|--all>` | 将指定文档的 `validatedRevision` 刷到当前 HEAD(update 成功后由 Recorder 调用;命名沿用惯例,实际记录 revision) |
+| `llmdoc fingerprint --update <path...|--all>` | 只刷新 revision 的低层台账原语;普通 update 收尾优先用 `commit`/`commit --verified` 保证 validate 与 git 提交闭环 |
 | `llmdoc init-state` | 首次生成 `meta.json` 台账骨架:全部文档 `validatedRevision: null` + 实测 convergence;init/upgrade 场景专用,拒绝覆盖已有台账 |
-| `llmdoc commit [-m] [--all] [--no-verify]` | **一体化收尾**:validate 门控 → 以 pathspec 提交 llmdoc 写集(不卷入用户 staged 的其他文件)→ fingerprint → meta 单独小 commit。消灭手工三步曲与 `--amend` 追尾陷阱 |
+| `llmdoc commit [-m] [--verified <path...> \| --all] [--no-verify]` | **一体化收尾**:validate 门控 → 可选提交正文写集(不卷入用户 staged 的其他文件)→ 刷新正文改动与 verified-unchanged 文档 → meta 单独小 commit。`--all` 表示全量复核且不能与 `--verified` 同用;无正文改动时可只提交 meta。消灭手工三步曲与 `--amend` 追尾陷阱 |
 
 ### 2.3 Hook 面(webhook 需要做的事全部收敛于此)
 

@@ -36,6 +36,8 @@ if (plugin) {
 // 2) Claude/Codex marketplace 身份一致；Codex entry 需 name/source/policy.installation/policy.authentication
 const claudeMarketplace = readJson(".claude-plugin/marketplace.json");
 const marketplace = readJson(".agents/plugins/marketplace.json");
+const rootPackage = readJson("package.json");
+const cliPackage = readJson("cli/package.json");
 if (claudeMarketplace && marketplace) {
   const expectedMarketplaceName = "llmdoc-plugin";
   if (claudeMarketplace.name !== expectedMarketplaceName) {
@@ -60,6 +62,19 @@ if (marketplace) {
       errors.push(`${label}: policy.installation 非法`);
     }
     if (!entry.policy?.authentication) errors.push(`${label}: 缺少 policy.authentication`);
+  }
+}
+const versionSurfaces = [
+  ["package.json", rootPackage?.version],
+  ["cli/package.json", cliPackage?.version],
+  [".claude-plugin/plugin.json", readJson(".claude-plugin/plugin.json")?.version],
+  [".claude-plugin/marketplace.json", claudeMarketplace?.plugins?.[0]?.version],
+  [".codex-plugin/plugin.json", plugin?.version]
+];
+const expectedVersion = cliPackage?.version;
+for (const [label, version] of versionSurfaces) {
+  if (expectedVersion && version !== expectedVersion) {
+    errors.push(`${label}: version ${version ?? "<missing>"} 与 cli/package.json ${expectedVersion} 不一致`);
   }
 }
 
@@ -111,7 +126,32 @@ for (const rel of ["skills/update/SKILL.md", ".agents/skills/update/SKILL.md"]) 
   }
 }
 
-// 5) hooks.json:合法 JSON 且所有命令使用 scoped 包名 + 非交互安装确认
+// 5) Claude 是 canonical authoring surface；生成的 Codex skill/agent 正文必须保持一致。
+// 宿主 front matter / TOML 包装可以不同，只比较实际指令正文。
+for (const name of ["llmdoc", "init", "update", "prune", "upgrade"]) {
+  const claudePath = `skills/${name}/SKILL.md`;
+  const codexPath = `.agents/skills/${name}/SKILL.md`;
+  const claudeBody = readMarkdownBody(claudePath);
+  const codexBody = readMarkdownBody(codexPath);
+  if (claudeBody !== null && codexBody !== null && claudeBody !== codexBody) {
+    errors.push(`${codexPath}: 指令正文与 canonical ${claudePath} 不一致`);
+  }
+}
+
+for (const name of ["investigator", "reflector", "recorder"]) {
+  const claudePath = `agents/${name}.md`;
+  const codexPath = `.codex/agents/${name}.toml`;
+  const claudeBody = readMarkdownBody(claudePath);
+  const codexFile = readText(codexPath);
+  const match = codexFile?.match(/developer_instructions = """\r?\n([\s\S]*?)"""\r?\nmodel\s*=/);
+  if (codexFile !== null && !match) {
+    errors.push(`${codexPath}: 无法解析 developer_instructions`);
+  } else if (claudeBody !== null && match && normalizeBody(match[1]) !== claudeBody) {
+    errors.push(`${codexPath}: 指令正文与 canonical ${claudePath} 不一致`);
+  }
+}
+
+// 6) hooks.json:合法 JSON 且所有命令使用 scoped 包名 + 非交互安装确认
 const hooks = readJson("hooks/hooks.json");
 if (hooks) {
   const commands = JSON.stringify(hooks).match(/"command":"([^"]+)"/g) ?? [];
@@ -129,3 +169,27 @@ if (errors.length > 0) {
   process.exit(1);
 }
 console.log("codex surface check: ok");
+
+function readText(rel) {
+  try {
+    return fs.readFileSync(path.join(root, rel), "utf8");
+  } catch (error) {
+    errors.push(`${rel}: 无法读取 — ${error.message}`);
+    return null;
+  }
+}
+
+function readMarkdownBody(rel) {
+  const content = readText(rel);
+  if (content === null) return null;
+  const match = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/);
+  if (!match) {
+    errors.push(`${rel}: 无法解析 front matter 边界`);
+    return null;
+  }
+  return normalizeBody(match[1]);
+}
+
+function normalizeBody(content) {
+  return content.replace(/\r\n/g, "\n").trim();
+}

@@ -1,5 +1,5 @@
 ---
-description: init 与 update 的当前契约：light/deep 路由、reflection candidate 晋升门，以及 recorder 与 calling workflow 的收尾分工。
+description: init/update 的授权边界、reflection 与稳定知识双门、light/deep 分流及 verified 收尾。
 kind: guide
 relations:
   related:
@@ -19,49 +19,27 @@ code:
 
 # Init 与 Update
 
-## 共通前置条件
+## 授权与角色边界
 
-两条命令都要求在第一次正式写入前先满足 `git status -- llmdoc/` clean。写完后必须跑 `validate`；如果校验失败且当次无法修复，命令文档要求回滚写入后再汇报失败。
+两条工作流第一次正式写入前都要求 `llmdoc/` clean，写后必须 validate，失败且无法修复时回滚本次文档写集。它们只授权知识面与临时候选处理，不授权源码编辑。
 
-## init 什么时候该跑
+`init` 只用于没有有效 V3 知识面的仓库；已有 V3 转 update，legacy 结构只能走显式 upgrade。首次知识面先调查和确定 topic 边界，再由 `recorder` 写少量高价值核心文档，不追求源码全量转述。
 
-`init` 只用于“仓库还没有有效 V3 `llmdoc/`”的情况。当前命令契约明确拒绝两类情况：
+## Update 是语义复核
 
-- 已经存在有效 V3：应转去 `update`
-- 发现 legacy 布局：应转去 `upgrade`
+入口由 `status`、`delta` 和显式 `--reflection` 候选共同组成。它们形成复核集合，不是正文写入列表：
 
-成功的 init 需要完成三件事：调查仓库表面、由 `recorder` 写出第一版 V3 知识面、再用 `validate` 收口。
+- light：owner 已映射、事实与根因清楚，`recorder` 可用定向证据判断；
+- deep：存在 unmapped、owner/根因不清、边界变化、冲突、影响过广或失效 revision，先由 `investigator` 调查。
 
-## update 如何选择 light 或 deep
+reflection candidate 先验证 trigger、错误动作、根因、预防规则、scope 与置信度；用户纠正证明意图，不自动证明仓库事实。通过质量门后仍要经过 Stable Knowledge Gate：只有会改变未来选择、难以快速重建、足够持久且归属明确的规则才进入既有 architecture/guide。瞬时失败、单任务偏好和原始证据留在临时队列。
 
-`update` 的入口是 `status`、`delta`，以及显式声明的 reflection candidates：
+代码 delta 同样只产生复核义务。原文失效或出现合格新结论才改写；原文仍成立时标记 verified unchanged，不追加本次 diff、路径库存或证据。
 
-- light：受影响文档或候选 owner 已映射、事实边界清楚，直接让 `recorder` 从 CLI 证据同步文档
-- deep：出现 unmapped files、候选 owner 或根因不清、结构边界变化、事实冲突、影响过广，或有文档缺少/失去有效 `validatedRevision`，先由 `investigator` 产出 scoped 报告，再交给 `recorder`
+## 收尾与 revision
 
-命令文档把源码编辑排除在授权之外；update 只同步 `llmdoc/` 与 `meta.json`。
+`recorder` 负责正文和 validate，calling workflow 负责 `commit`：正文改动与 `--verified` 文档可一次取 fingerprint 并集；全部未改时用 meta-only `commit --verified`；全仓复核才用 `--all`。相关实现仍 dirty 时不得推进 revision。
 
-## reflection candidate 的晋升门
+fingerprint 锚定真实 commit。rebase/squash 会改写 hash，使台账在 fresh clone 中失效，因此含 fingerprint 的提交应保留历史或在合并后重新全量烙印；不得用 amend 合并 meta follow-up。
 
-`/llmdoc:update --reflection` 才授权工作流读取并处理声明的候选；省略路径时读取 `.llmdoc-tmp/reflections/pending/` 直属的 Markdown 候选。pending candidate 本身就是 update 信号，即使没有代码 delta 也要进入复核。
-
-候选必须包含可核对的 trigger、错误假设或动作、根因、预防规则、作用域与置信度。用户纠正可以确认意图，但仓库事实仍要由代码、测试或稳定文档验证；通过 `search` 和定向 `show` 找到 owner 并查重后，`recorder` 只把可复用的成熟规则折入既有 architecture/guide，不创建 tracked reflection 文档。晋升、已覆盖或驳回的候选由 calling workflow 归档到 resolved；流程 incomplete/failed 时保持 pending。
-
-## recorder 与工作流的收尾分工
-
-写入之后的收尾按角色分两段：
-
-- `recorder` 只负责跑 `validate` 并修复它报告的全部失败，然后汇报写集；它不执行最终收尾，也不手工拼出 `commit` 的等价序列。只有当工作流明确要求“只刷新 revision、不提交”时，recorder 才自己跑 `fingerprint --update`。
-- 最终收尾归 calling workflow：用 `npx -y @tokenroll/llmdoc commit -m "<message>"` 一次完成（`--all` 做全仓验证并推进 baseline；内部序列见 `cli-runtime/retrieval-and-mutation.mdx`）。
-
-## 合并方式对 revision 的影响
-
-`commit` 烙进 `meta.json` 的 baseline / `validatedRevision` 锚定的是当时分支上的真实 commit hash。任何重写 hash 的操作都会作废刚烙的 revision——除了已知的“不要用 `--amend` 并 meta commit”，rebase merge 与 squash merge 同样会重写 hash，使 `meta.json` 里的 revision 脱离 main 历史。这种破坏是隐性的：本地仓库里旧 commit 对象仍可解析、validate 照常通过，但 CI fresh clone 中该 revision 不可达、validate 必失败。因此带 fingerprint / meta 变更的 PR 必须用 merge commit 合并（保留原 commit），或直接在目标分支上收尾；已经踩中时，在合并后的历史上重跑 `fingerprint --all` 并提交即可修复。
-
-## dirty worktree 的完成语义
-
-当稳定文档已反映工作树实现、但相关源码尚未提交时，`baseline.revision` 与各文档 `validatedRevision` 仍必须锚定真实 HEAD，不能伪造“工作树 revision”。`status` / `delta` 会诚实地把这些文档标成 dirty 或 impacted；update 可以完成文档同步，但不能把这类状态包装成“已提交且已 fingerprint 的 clean revision”；真正清除 dirty/impacted 信号，要等用户提交相关实现后再运行 fingerprint（或 `llmdoc commit --all`）。
-
-## 结束条件
-
-update 成功前至少要有：受影响文档已改写完、recorder 的 `validate` 全部通过、工作流已用 `commit` 收尾。结果状态固定只有五个：`success`、`no_change`、`dry_run`、`incomplete`、`failed`，不要在 stable docs 里发明第六种“半成功”。最终汇报以 `validate` 与 `commit` 的结果为准，不再单独汇报一次独立的 fingerprint 步骤。
+reflection 候选只有在成功晋升、确认已覆盖或明确驳回后才移入 resolved；incomplete/failed 保持 pending。工作流只报告既定五态，success 以语义复核、validate 和 commit 闭环为准。

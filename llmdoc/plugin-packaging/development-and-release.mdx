@@ -1,5 +1,5 @@
 ---
-description: 开发与发布：编辑前分支同步、包结构、根脚本与 GitHub workflows。
+description: 开发前分支同步、消费边界、验证与发布表面的同步不变量。
 kind: reference
 code:
   paths:
@@ -14,37 +14,16 @@ code:
 
 # 开发、验证与发布
 
-## 包结构
+## 消费与开发边界
 
-- `cli/package.json` 定义公开 npm 包 `@tokenroll/llmdoc`，Node 要求 `>=18`，唯一 bin 是 `llmdoc`
-- 仓库根 `package.json` 是 llmdoc 自身的私有开发工作区，主要把 `./cli` 挂成 devDependency，并转发 `build`、`lint`、`test`、`typecheck`、`validate:dogfood`、`check:prompts`；这仅服务本仓库开发，不代表消费方应把 llmdoc 加入业务项目依赖
+公开产物是 `@tokenroll/llmdoc` CLI；仓库根 package 只是私有开发工作区。消费项目通过外部 npx/global 安装使用 CLI，不把 llmdoc 写进自己的依赖和 lockfile。
 
-## 非平凡编辑前的分支同步
+## 非平凡编辑前先同步
 
-在已有 remote-tracking 的开发分支开始非平凡编辑前，先检查 worktree 是否有需要保存的改动，再 fetch 并确认本地与远端的 ahead/behind 或 divergence；有落后或分叉时，先按仓库认可的方式完成同步并确认工作树恢复稳定，再开始编辑。仓库若规定 rebase，就在恢复 WIP 前完成 rebase；这是一条受仓库策略约束的同步规则，不代表所有仓库都必须使用 rebase。
+在已有 remote-tracking 的分支开始非平凡编辑前，先保存 worktree，再 fetch 并检查 ahead/behind 或 divergence。落后或分叉时先按仓库策略同步；本仓库要求 rebase 时，应在恢复 WIP 和创建新 commit 之前完成。同步后必须确认基线与工作树状态，不能在过期分支上继续堆提交。
 
-## 本地验证
+## 变更集同步不变量
 
-- 本地开发通常先在仓库根安装依赖并跑根脚本，脚本会转发到 `cli/`
-- 之后补一层 dogfood `validate`，确认当前 `llmdoc/` 通过校验
+CLI 命令或输出语义变化必须在同一 change-set 同步：canonical skills/agents、生成的 Codex 表面、版本与 lockfile、双语 README/design docs，以及 dogfood `llmdoc/`。精确文件数量由自动化维护，不在正文复制。
 
-测试已覆盖 validate、读取/状态面、fingerprint、hook、prune、upgrade、分页预算与发布 smoke；文档或命令表面若未同步，会先暴露。
-
-## GitHub 自动化
-
-- `ci.yml`：在 Node 18 / 20 / 22 上执行安装、lint、typecheck、test、build、dogfood validate、prompt budget 检查，并做一次打包后消费者安装 smoke test
-- `codex-plugin-scanner.yml`：在 push / PR 时扫描 `.codex-plugin/**`、`skills/**`、`.mcp.json`
-- `release.yml`：在 `v*` tag 上复跑验证、核对五处版本表面一致（`cli/package.json`、根 `package.json`、`.claude-plugin/plugin.json`、`.claude-plugin/marketplace.json` 的 `plugins[].version`、`.codex-plugin/plugin.json`）、发布 `@tokenroll/llmdoc` 到 npm，并上传 npm tarball 与插件 tarball 到 GitHub Release
-
-维护时要让 README、命令表面、生成后的 Codex 表面与这些自动化同步演进。
-
-## 命令语义变更的同步不变量
-
-任何 CLI 命令或输出语义的变更，同一个 change-set 必须同步四类表面：
-
-1. `skills/*/SKILL.md` 中引用该命令语义的段落（受 `check:prompts` token 预算约束）
-2. 版本表面 bump——五处 JSON（`cli/package.json`、根 `package.json`、`.claude-plugin/plugin.json`、`.claude-plugin/marketplace.json` 的 `plugins[].version`、`.codex-plugin/plugin.json`）加两个 lockfile
-3. README 双语与 design docs、agents 提示词中的命令清单
-4. llmdoc dogfood 文档
-
-自动化只兜住一部分：`release.yml` 只核对五处版本数字一致，不会发现「skills 描述落后于 CLI 语义」这类漂移；skills 同步只能靠 change-set 纪律。
+`scripts/check-codex-surface.mjs` 负责版本、身份与生成正文 parity；CI 还运行 lint、typecheck、test、build、prompt budget、dogfood validate 和消费者安装 smoke。自动化通过后仍需审查语义是否在所有公开表面一致，特别是宿主 UI policy 与授权边界。

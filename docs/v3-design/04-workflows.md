@@ -5,8 +5,8 @@
 | 命令 | 目的 | 触发 | 主 assistant 可建议 |
 |---|---|---|---|
 | `init` | 为无 llmdoc 的项目首次建立知识体系 | 显式调用 | 项目缺 llmdoc 时,仅建议 |
-| `update` | 按历史有效版本、当前代码差异与反思候选同步知识 | 显式调用 | 存在持久知识变化或 pending 反思候选时,确认后执行 |
-| `prune` | 收敛重复、碎片与膨胀的知识 | 显式调用 | update 后命中 growth gate 时,确认后执行 |
+| `update` | 按历史有效版本、代码差异与反思候选复核知识,只在语义变化时改正文 | 显式调用 | 存在映射实现/持久知识变化或 pending 反思候选时,确认后执行 |
+| `prune` | 收敛重复、碎片、膨胀与可重建库存 | 显式调用 | 命中 growth gate 或知识密度明显下降时,确认后执行 |
 | `upgrade` | 迁移旧 major 结构(V2 → V3) | **仅显式调用,永不建议** | 否 |
 
 授权模型:手动调用即授权该次声明 scope;主动建议须获得一次确认,确认后完整运行不再二次确认;scope 异常扩张时暂停重新询问。
@@ -53,9 +53,10 @@ Compact summary 必须保存 `LLMDOC_STATE`:active goal、已读文档路径、�
 主 assistant 判断(hook stop 只给 best-effort 提醒):
 
 1. 是否出现强反思信号(用户明确纠正、验证证明方案错误、重大返工/回滚、指令违规或可复用 missing signal)→ 由 Reflector 写 pending 候选;
-2. 是否有持久知识变化或 pending 候选 → 简述原因并确认后运行 update;候选本身就是 update 信号,不依赖代码 delta;
-3. 是否值得留一般过程记录 → 由主 assistant 判断,写 `.llmdoc-tmp/records/`;
-4. 仅实现细节变化、无强信号且文档仍准确 → 不建议。
+2. 是否有持久知识变化、映射实现变化或 pending 候选 → 简述原因并确认后运行 update;候选本身就是信号,不依赖代码 delta;
+3. 映射实现变化但正文仍准确 → scoped update 复核后只推进 verified revision,不扩写证据;
+4. 是否值得留一般过程记录 → 由主 assistant 判断,写 `.llmdoc-tmp/records/`;
+5. 与知识面无关的偶发实现细节变化、且无强反思信号 → 不建议。
 
 ## 4. 命令 SOP
 
@@ -75,34 +76,38 @@ preflight: 确认 llmdoc/ 不存在(存在有效 V3 → 拒绝并建议 update;V
 ### 4.2 Update(light / deep)
 
 ```text
-llmdoc status/delta → 影响闭包 + unmapped paths + 模式信号
+llmdoc status/delta → 复核集合 + unmapped paths + 模式信号
 --reflection → 读取显式候选;未给路径时读取 pending/ 下全部 Markdown 候选
 → 质量门:验证 trigger、错误动作、root cause、预防规则、scope、confidence 与 existing owner
 light: 影响明确、全部映射到现有文档、无结构变化
-  → Recorder 直接同步受影响文档 → validate → fingerprint --update
+  → Recorder 对受影响文档与合格候选应用稳定知识准入门槛
+  → 语义变化:改正文;语义未变:标记 verified unchanged
 deep: 存在 unmapped 区域 / lesson owner 或 root cause 不清 / topic 结构变化 / baseline 不可用 / 事实冲突 / 闭包过大
-  → Investigator(可多个并行)调查 → Recorder 综合写入 → validate → fingerprint
+  → Investigator(可多个并行)调查 → Recorder 综合判断,不得原样晋升证据
+→ validate → commit(正文写集 + --verified 未改文档;全量复核用 --all)
 ```
 
 - Light 中发现未知影响必须升级 deep,升级不需要例行二次授权,scope 超出授权才暂停;
-- 更新的是**当前有效状态**,不记录中间 commit 历史;
+- `delta` 命中表示需要复核,不表示正文必须变化;原文仍成立时不得追加本次 diff、路径库存或新证据;
+- 更新的是**当前有效语义**,不记录中间 commit 历史;
 - 优先改写/合并现有文档,现有边界装不下才新建;
 - 局部 scope 只刷新对应文档的 `validatedRevision`,不推进 baseline。
 
-**经验回灌**:Reflector 候选是临时证据队列,不是稳定文档。Recorder 必须先用 `search/show` 找 owner 并验证事实;成熟经验改写进相关 architecture/guide 的正文,作为不变量、反例或注意事项。用户纠正能证明用户意图,仓库事实仍须代码、测试或稳定文档证据。瞬时工具失败、单任务偏好和未验证推测不晋升。success 后候选移入 `.llmdoc-tmp/reflections/resolved/YYYY-MM-DD/`;incomplete/failed 时继续 pending。
+**经验回灌**:Reflector 候选是临时证据队列,不是稳定文档。Recorder 必须先用 `search/show` 找 owner、验证事实,再应用 [稳定知识准入门槛](01-knowledge-model.md#7-稳定知识准入门槛);只有会改变下次选择、难以从 canonical source 恢复且足够持久的规则,才折入相关 architecture/guide。用户纠正能证明用户意图,仓库事实仍须代码、测试或稳定文档证据。瞬时工具失败、单任务偏好和未验证推测不晋升。success 后候选移入 `.llmdoc-tmp/reflections/resolved/YYYY-MM-DD/`;incomplete/failed 时继续 pending。
 
 ### 4.3 Prune
 
-触发:update success 后 CLI 比较当前规模与 `convergence` baseline,命中 growth gate(如 token 总量增长超阈值)→ 主 assistant 说明原因,询问一次。
+触发:update success 后 CLI 命中 growth gate,或人工发现正文被命令/文件库存与过渡状态遮蔽 → 主 assistant 说明原因,询问一次。
 
 ```text
 llmdoc prune --report(规模、重复候选、碎片候选)
-→ Recorder 制定收敛 plan(merge/rewrite/delete,每个被删节点映射到存续目标)
-→ 执行 → validate → 确认规模实际下降且 code.paths 覆盖不下降
+→ Recorder 逐段应用稳定知识准入门槛
+→ merge/rewrite/delete,移除可由 canonical source 快速重建的库存
+→ 执行 → validate → 确认决策/契约未丢失且 code.paths 仍准确
 → 刷新 convergence baseline
 ```
 
-禁止:archive 式假收敛(把文档移出读取路径充当规模下降)、按时间无脑删除、为字节数牺牲有效约束。规模未降或覆盖下降 → 不得报告 success、不刷新 convergence。
+禁止:archive 式假收敛、按时间无脑删除、把低价值内容复制到另一篇再删除原文、为字节数牺牲有效约束、为保持 coverage 指标把无关路径挂到文档。`prune --report` 没有重复/碎片候选也不能代替语义密度审查。只有知识密度或路由实质改善才能报告 success;只有规模实际下降且合理映射未丢失时才刷新 convergence。
 
 ### 4.4 Upgrade(V2 → V3)
 
