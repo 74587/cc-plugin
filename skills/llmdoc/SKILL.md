@@ -49,6 +49,19 @@ These entry points are alternatives, not a sequence. Stop as soon as the task ha
 - When a task produces durable knowledge changes, suggest `/llmdoc:update` at the end.
 - Never suggest `/llmdoc:upgrade`; it runs only when the user asks for it by name.
 
+## Reflection Gate
+
+Strong reflection signals expose a reusable project or workflow lesson:
+
+- the user corrects an assistant assumption or action
+- verification proves the chosen approach wrong
+- substantial rework, rollback, or an instruction violation occurs
+- a missing project signal would likely prevent recurrence
+
+Skip transient tool failures, trivial typos, speculation, and one-task preferences unless marked durable.
+
+On a strong signal, continue the task and give `reflector` compact evidence while context is fresh. It writes a privacy-safe candidate under `.llmdoc-tmp/reflections/pending/`, never the transcript or tracked knowledge. A pending candidate triggers update review even with no source delta. At task end, name the lesson and ask once to run `/llmdoc:update --reflection <path>`; wait for authorization.
+
 ## Continuation State
 
 On compact or resume, keep `LLMDOC_STATE` small and practical:
@@ -59,10 +72,12 @@ On compact or resume, keep `LLMDOC_STATE` small and practical:
 - user decisions and constraints
 - next action
 - open risks or unknowns
+- pending lesson candidates, if any
 
 If that state is still sufficient, continue without re-running `tree`, `index`, or prior `show` reads.
 
 ## Roles
 
 - `investigator`: current-state research, scoped evidence gathering, scratch reports under `.llmdoc-tmp/`
+- `reflector`: turns strong corrections, verified mistakes, and major rework into structured candidates under `.llmdoc-tmp/reflections/pending/`
 - `recorder`: the only writer of tracked `llmdoc/` knowledge

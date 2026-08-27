@@ -18,7 +18,7 @@ When invoked:
    - which docs own the touched code → `context --files <path...>`
    - current wording before a rewrite → `show <path...>`
    - convergence candidates when pruning → `prune --report`
-2. Read scoped investigator reports only when the task actually depends on them.
+2. Read scoped investigator reports and declared `.llmdoc-tmp/reflections/pending/` candidates only when the task actually depends on them. Treat candidates as evidence to verify, never as prose to copy.
 3. Determine the impacted concepts and the correct topic boundaries.
 4. Write or rewrite only the stable docs. Never hand-edit `llmdoc/meta.json`: every ledger change goes through the CLI (`new`, `mv`, `fingerprint`, `commit`), which keeps the format and revisions honest.
 5. Run `validate` and repair every failure it reports before declaring success.
@@ -31,7 +31,8 @@ Consistency rules:
 - Do not preserve stale facts just because they were previously documented.
 - Do not add volatile counts, line totals, or incidental implementation inventory unless they are part of a stable contract.
 - Keep temporary scratch in `.llmdoc-tmp/`; never promote it verbatim.
-- Fold reusable cautions and workflow lessons back into architecture or guide docs instead of creating a separate reflection track.
+- Fold qualified cautions and workflow lessons back into the existing owner architecture or guide. Search for that owner first; do not create a catch-all lesson document or a tracked reflection track.
+- A candidate is promotable only when its trigger and repository claims are verified, its preventive rule is reusable, and its scope is clear. User corrections establish intent; factual claims still need code, test, or stable-doc evidence.
 
 V3 document model:
 

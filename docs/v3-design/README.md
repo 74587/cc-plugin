@@ -35,9 +35,9 @@ llmdoc 是工程的**持久化外置上下文**:把代码里无法低成本恢�
 | 3 | 每文档稳定 `id` 字段 | 路径即 ID,无 id 字段 | git-native;重命名靠 `git mv` + CLI 批量改引用 |
 | 4 | 自定义内容 fingerprint(hash) | git revision 锚点(`validatedRevision`) | delta 就是 `git diff`,不自建 hash 体系 |
 | 5 | 六步事务 + journal + 独立复核 | git-based:写前 clean → 写后 validate → 失败 revert | llmdoc 活在 git 里,不重造数据库 |
-| 6 | kind 六类(含 index/decision/reflection) | 三类:`architecture / guide / reference` | decision/reflection 砍掉;index 入口节点砍掉(dogfood 实测其独特价值只剩 topic 描述,CLI 可聚合) |
-| 7 | Reflection 案例积累 + 阈值晋升管线 | 移除;`.llmdoc-tmp/records/` 存过程记录,不进 git 知识面 | 简化;沉淀机制改为 update 时回灌 |
-| 8 | Investigator / Reflector / Recorder 三角色 | Investigator / Recorder 两角色 | Reflection 管线移除后 Reflector 失去独立职责 |
+| 6 | kind 六类(含 index/decision/reflection) | 三类:`architecture / guide / reference` | 不恢复 tracked reflection kind;原始候选不是稳定知识;index 入口节点由 CLI 聚合替代 |
+| 7 | Reflection 案例积累 + 阈值晋升管线 | 强信号写入 `.llmdoc-tmp/reflections/pending/`,update 验证后回灌既有稳定文档 | 恢复纠错闭环,但不恢复无界 tracked memory 树 |
+| 8 | Investigator / Reflector / Recorder 三角色 | 保留三角色,但 Reflector 只写临时结构化候选 | 独立保留任务上下文中的纠错证据,Recorder 仍是稳定知识唯一写入者 |
 | 9 | 双平台生成管线 + 大 parity 矩阵 | CLI 承载逻辑,插件是薄 prompt 壳;跨插件转换交给 ACPlugin | 成本降一个量级;第三方平台靠 CLI + AGENTS.md 配方即可接入 |
 | 10 | `meta.json` 禁止一切可重建状态 | 保持单文件、只存有效性台账(方向一致,字段大幅简化) | 文档量不大,目录/图实时扫描即可;聚合索引方案留待 benchmark |
 
@@ -53,7 +53,7 @@ llmdoc 是工程的**持久化外置上下文**:把代码里无法低成本恢�
 - **topic 无入口节点**:任何位置禁止 `index.mdx`;topic 摘要由 `llmdoc tree` 从文档聚合,purpose/boundary 归 topic 的 `architecture.mdx` 推荐槽位(dogfood 后由「必有入口」修订而来)。
 - 事务性 = git-based,无独立复核。
 - 检索 V1 只做词法(front matter 过滤 + BM25 级全文),不做 embedding。
-- 过程记录(工作日志、过去的 plan)归 `.llmdoc-tmp/`,不进 git 知识面;update 时是否记录由主 assistant 判断。
+- 过程记录(工作日志、过去的 plan)归 `.llmdoc-tmp/`,不进 git 知识面。用户明确纠正、已验证方案失败、重大返工或指令违规等强信号由 Reflector 写入 `.llmdoc-tmp/reflections/pending/`;pending 候选即使没有代码 delta 也会触发 update 判断,但不保存完整 transcript。
 - 平台封装:**仓库根即标准 Claude Code plugin 形态**;Codex 侧插件由 ACPlugin 转换承接,不自建生成管线。
 
 ## 开放问题(不阻塞实现)

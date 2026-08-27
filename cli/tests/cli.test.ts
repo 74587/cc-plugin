@@ -386,6 +386,7 @@ describe("llmdoc cli", () => {
     expect(compact.exitCode).toBe(0);
     expect(compactJson.continue).toBe(true);
     expect(compactJson.systemMessage).toContain("LLMDOC_STATE");
+    expect(compactJson.systemMessage).toContain("lesson_candidates");
 
     removeGitDirectory(rootDir);
     const degradedStop = await runCli(["hook", "stop"], rootDir);
@@ -430,6 +431,37 @@ describe("llmdoc cli", () => {
     const stopJson = JSON.parse(stop.stdout) as { continue: boolean; systemMessage?: string };
     expect(stopJson.continue).toBe(true);
     expect(stopJson.systemMessage).toBeUndefined();
+  });
+
+  test("pending reflection candidates trigger hook signals without a code delta", async () => {
+    const rootDir = createFixture();
+    writeRepoFile(rootDir, ".llmdoc-tmp/reflections/pending/user-correction.md", "# 用户纠正\n");
+    writeRepoFile(rootDir, ".llmdoc-tmp/reflections/pending/test-failure.md", "# 测试失败\n");
+    writeRepoFile(rootDir, ".llmdoc-tmp/reflections/pending/notes.txt", "not a candidate\n");
+
+    const sessionStart = await runCli(["hook", "session-start"], rootDir);
+    expect(sessionStart.exitCode).toBe(0);
+    expect(sessionStart.stdout).toContain("待处理反思候选 2 个");
+
+    const stop = await runCli(["hook", "stop"], rootDir);
+    const stopJson = JSON.parse(stop.stdout) as { continue: boolean; systemMessage?: string };
+    expect(stop.exitCode).toBe(0);
+    expect(stopJson.continue).toBe(true);
+    expect(stopJson.systemMessage).toContain("2 个反思候选待处理");
+    expect(stopJson.systemMessage).toContain("/llmdoc:update --reflection");
+    expect(stopJson.systemMessage).not.toContain("user-correction.md");
+    expect(stopJson.systemMessage).not.toContain("test-failure.md");
+  });
+
+  test("hooks omit reflection signals when no pending markdown candidates exist", async () => {
+    const rootDir = createFixture();
+    writeRepoFile(rootDir, ".llmdoc-tmp/reflections/pending/notes.txt", "not a candidate\n");
+
+    const sessionStart = await runCli(["hook", "session-start"], rootDir);
+    expect(sessionStart.stdout).not.toContain("反思候选");
+
+    const stop = await runCli(["hook", "stop"], rootDir);
+    expect(JSON.parse(stop.stdout)).toEqual({ continue: true });
   });
 
   test("prune report and upgrade inventory stay read-only and deterministic", async () => {

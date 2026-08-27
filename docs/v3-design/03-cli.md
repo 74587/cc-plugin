@@ -43,11 +43,11 @@ CLI 是 V3 的 Runtime 实体:所有确定性、可测试、重复出现的工�
 
 | 命令 | 输出 |
 |---|---|
-| `llmdoc hook session-start` | ≤200 token 状态信号:是否存在 llmdoc、baseline 新鲜度、失效文档数、冷启动还是 compact 重入 |
-| `llmdoc hook stop` | best-effort 提醒:本次会话是否可能需要 update(基于 dirty/delta 粗信号) |
-| `llmdoc hook compact` | 输出 LLMDOC_STATE 保存指令(要求 summary 保留:目标、已读文档路径、关键结论、下一步) |
+| `llmdoc hook session-start` | ≤200 token 状态信号:是否存在 llmdoc、可执行 delta、pending 反思候选数、冷启动还是 compact 重入 |
+| `llmdoc hook stop` | best-effort 提醒:代码 delta 或 pending 反思候选是否触发 update 判断;候选可在无代码变化时独立触发 |
+| `llmdoc hook compact` | 输出 LLMDOC_STATE 保存指令(要求 summary 保留:目标、已读文档路径、关键结论、lesson candidates、下一步) |
 
-Fail policy:hook 执行失败不阻塞开发;hook 永不写 `llmdoc/`;写命令不依赖 hook 才正确。
+Fail policy:hook 执行失败不阻塞开发;hook 永不写 `llmdoc/`;写命令不依赖 hook 才正确。反思信号只统计 `.llmdoc-tmp/reflections/pending/` 直属 Markdown 文件,不读取内容、stdin 或完整 transcript。
 
 ### 2.4 维护面
 
