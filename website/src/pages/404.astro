@@ -1,0 +1,27 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Not found"
+  description="The requested llmdoc page does not exist."
+  noindex
+  translated={false}
+>
+  <section class="not-found shell">
+    <p class="eyebrow">404 / NO ROUTE</p>
+    <h1>That path has no document.</h1>
+    <p>这个路径没有对应文档。回到首页，或从文档地图重新开始。</p>
+    <div>
+      <a class="button" href="/">Home</a>
+      <a class="button secondary" href="/docs/">Documentation</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .not-found { min-height: 72svh; display: grid; align-content: center; justify-items: start; }
+  .not-found h1 { max-width: 800px; margin: 0.5rem 0 1rem; font-family: var(--serif); font-size: clamp(3rem, 8vw, 7rem); font-weight: 500; letter-spacing: -0.06em; line-height: 0.95; }
+  .not-found > p:not(.eyebrow) { color: var(--muted); }
+  .not-found div { display: flex; gap: 0.7rem; margin-top: 1rem; }
+</style>

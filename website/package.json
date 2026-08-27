@@ -1,0 +1,24 @@
+{
+  "name": "llmdoc-site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "dev": "astro dev",
+    "check": "astro check",
+    "build": "astro build",
+    "preview": "astro preview",
+    "cf:dev": "npm run build && wrangler dev",
+    "cf:dry-run": "npm run build && wrangler deploy --dry-run"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
+    "astro": "^7.2.8"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "typescript": "^6.0.0",
+    "wrangler": "^4.126.0"
+  }
+}

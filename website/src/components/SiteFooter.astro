@@ -1,0 +1,32 @@
+---
+interface Props { locale?: "en" | "zh" }
+const { locale = "en" } = Astro.props;
+const isZh = locale === "zh";
+---
+
+<footer>
+  <div class="shell footer-grid">
+    <div>
+      <p class="wordmark">llmdoc<span>_</span></p>
+      <p>{isZh ? "代码库的持久外部上下文。" : "Persistent external context for codebases."}</p>
+    </div>
+    <nav aria-label={isZh ? "页脚导航" : "Footer navigation"}>
+      <a href={isZh ? "/zh/docs/" : "/docs/"}>{isZh ? "文档" : "Documentation"}</a>
+      <a href="https://github.com/TokenRollAI/llmdoc">GitHub</a>
+      <a href="https://blog.pdjjq.org/">DJJ's blog</a>
+    </nav>
+  </div>
+</footer>
+
+<style>
+  footer { border-top: 1px solid var(--line); padding-block: 3rem; background: #070a07; color: var(--muted); }
+  .footer-grid { display: grid; grid-template-columns: 1fr auto; gap: 2rem; }
+  .wordmark { margin: 0; color: var(--ink); font-family: var(--mono); font-weight: 800; }
+  .wordmark span { color: var(--green); animation: blink 1.1s steps(1) infinite; }
+  .footer-grid p:last-child { margin-bottom: 0; font-size: 0.86rem; }
+  nav { display: grid; grid-template-columns: repeat(3, auto); align-content: start; gap: 0.6rem 1.8rem; }
+  nav a { font-family: var(--mono); font-size: 0.78rem; text-decoration: none; }
+  @keyframes blink { 50% { opacity: 0; } }
+  @media (max-width: 640px) { .footer-grid { grid-template-columns: 1fr; } nav { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .wordmark span { animation: none; } }
+</style>

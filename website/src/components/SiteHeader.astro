@@ -1,0 +1,43 @@
+---
+interface Props {
+  locale?: "en" | "zh";
+  path?: string;
+}
+
+const { locale = "en", path = Astro.url.pathname } = Astro.props;
+const isZh = locale === "zh";
+const docsHref = isZh ? "/zh/docs/" : "/docs/";
+const homeHref = isZh ? "/zh/" : "/";
+const languageHref = isZh
+  ? path.replace(/^\/zh(?=\/|$)/, "") || "/"
+  : path === "/" ? "/zh/" : `/zh${path}`;
+---
+
+<header class="site-header">
+  <div class="shell header-inner">
+    <a class="brand" href={homeHref} aria-label="llmdoc home">
+      <span class="brand-mark" aria-hidden="true">λ/</span>
+      <span>llmdoc</span>
+      <small>V3</small>
+    </a>
+    <nav aria-label={isZh ? "主导航" : "Main navigation"}>
+      <a class:list={{ active: path.includes("/docs") }} href={docsHref}>{isZh ? "文档" : "Docs"}</a>
+      <a href="https://github.com/TokenRollAI/llmdoc">GitHub</a>
+      <a class="lang" href={languageHref} lang={isZh ? "en" : "zh-CN"}>{isZh ? "EN" : "中文"}</a>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header { position: sticky; z-index: 50; top: 0; border-bottom: 1px solid rgba(43, 53, 42, 0.88); background: rgba(9, 13, 9, 0.88); backdrop-filter: blur(16px); }
+  .header-inner { min-height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .brand { display: inline-flex; align-items: baseline; gap: 0.45rem; color: var(--ink); font-family: var(--mono); font-size: 1rem; font-weight: 800; text-decoration: none; }
+  .brand-mark { color: var(--green); }
+  .brand small { border: 1px solid var(--line); padding: 0.05rem 0.25rem; color: var(--amber); font-size: 0.58rem; font-weight: 700; }
+  nav { display: flex; align-items: center; gap: clamp(0.55rem, 2vw, 1.35rem); }
+  nav a { position: relative; color: var(--muted); font-family: var(--mono); font-size: 0.76rem; text-decoration: none; }
+  nav a:hover, nav a.active { color: var(--ink); }
+  nav a.active::after { content: ""; position: absolute; right: 0; bottom: -22px; left: 0; height: 2px; background: var(--green); }
+  .lang { border-left: 1px solid var(--line); padding-left: clamp(0.55rem, 2vw, 1.35rem); color: var(--green); }
+  @media (max-width: 560px) { .brand small { display: none; } }
+</style>

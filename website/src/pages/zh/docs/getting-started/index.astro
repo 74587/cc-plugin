@@ -1,0 +1,46 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="开始使用"
+  description="通过外部 CLI、Claude Code 插件、Codex 插件或简洁的 AGENTS.md 规则开始使用 llmdoc。"
+  locale="zh"
+  section="getting-started"
+>
+  <h1>开始使用</h1>
+  <p>llmdoc 需要 Node.js 18 或更高版本，以及 Git。CLI 是外部工具，不要把它加入正在工作的消费仓库。</p>
+
+  <h2>先读取知识地图</h2>
+  <pre><code>npx -y @tokenroll/llmdoc tree</code></pre>
+  <p><code>-y</code> 允许 npx 把缺失的包解析到机器缓存，不会修改消费仓库的 <code>package.json</code> 或 lockfile。</p>
+
+  <div class="callout"><p>始终使用完整的 scoped 包名。裸的 <code>npx llmdoc</code> 会解析到另一个无关包。</p></div>
+
+  <h2>Claude Code</h2>
+  <p>添加经仓库验证的 marketplace，然后安装插件：</p>
+  <pre><code>/plugin marketplace add https://github.com/TokenRollAI/llmdoc
+/plugin install llmdoc@llmdoc-plugin</code></pre>
+
+  <h2>Codex</h2>
+  <p>把 llmdoc 添加为插件 marketplace 来源，再从 Plugins Directory 安装。信任插件前请先审查 hooks。</p>
+  <pre><code>codex plugin marketplace add TokenRollAI/llmdoc</code></pre>
+
+  <h2>其他 Coding Agent</h2>
+  <p>在 <code>AGENTS.md</code> 中加入一条简洁规则，把发现过程路由到外部 CLI。持久知识留在 <code>llmdoc/</code>；不要手工编辑 <code>llmdoc/meta.json</code>。</p>
+
+  <h2>第一次检索</h2>
+  <pre><code># 范围不明确
+npx -y @tokenroll/llmdoc tree
+
+# 概念或契约
+npx -y @tokenroll/llmdoc search "重试策略"
+
+# 具体文件所需的上下文
+npx -y @tokenroll/llmdoc context --files src/api/client.ts</code></pre>
+  <p>这些命令是不同入口，不是固定流水线。确认目标文档后，再用 <code>show</code> 读取正文。</p>
+
+  <h2>在本地浏览</h2>
+  <p>启动内置本地 Viewer，查看当前仓库的文档结构、关系与状态。服务器只绑定 <code>127.0.0.1</code>。</p>
+  <pre><code>npx -y @tokenroll/llmdoc serve</code></pre>
+</DocsLayout>

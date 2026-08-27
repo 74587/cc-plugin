@@ -1,0 +1,67 @@
+---
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description: string;
+  locale?: "en" | "zh";
+  canonicalPath?: string;
+  noindex?: boolean;
+  translated?: boolean;
+}
+
+const {
+  title,
+  description,
+  locale = "en",
+  canonicalPath = Astro.url.pathname,
+  noindex = false,
+  translated = true,
+} = Astro.props;
+const origin = Astro.site ?? Astro.url.origin;
+const canonical = new URL(canonicalPath, origin);
+const fullTitle = title === "llmdoc" ? title : `${title} · llmdoc`;
+const englishPath = canonicalPath.replace(/^\/zh(?=\/|$)/, "") || "/";
+const chinesePath = canonicalPath.startsWith("/zh")
+  ? canonicalPath
+  : canonicalPath === "/" ? "/zh/" : `/zh${canonicalPath}`;
+---
+
+<!doctype html>
+<html lang={locale === "zh" ? "zh-CN" : "en"}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#090d09" />
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {translated && <link rel="alternate" hreflang="en" href={new URL(englishPath, origin)} />}
+    {translated && <link rel="alternate" hreflang="zh-CN" href={new URL(chinesePath, origin)} />}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="llmdoc" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={locale === "zh" ? "zh_CN" : "en_US"} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <title>{fullTitle}</title>
+  </head>
+  <body>
+    <a class="skip" href="#main">{locale === "zh" ? "跳到正文" : "Skip to content"}</a>
+    <SiteHeader locale={locale} path={Astro.url.pathname} />
+    <main id="main"><slot /></main>
+    <SiteFooter locale={locale} />
+  </body>
+</html>
+
+<style>
+  .skip { position: fixed; z-index: 100; top: 0.75rem; left: 0.75rem; transform: translateY(-200%); padding: 0.5rem 0.75rem; background: var(--amber); color: #0b0f09; font-family: var(--mono); font-size: 0.8rem; }
+  .skip:focus { transform: translateY(0); }
+</style>

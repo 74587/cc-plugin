@@ -1,0 +1,53 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="CLI reference"
+  description="Reference for llmdoc V3 discovery, validity, safe document mutation, convergence, migration, and host hook commands."
+  section="cli"
+>
+  <h1>CLI reference</h1>
+  <p>Invoke the external CLI as <code>npx -y @tokenroll/llmdoc &lt;command&gt;</code>. Pin the version in the package spec when a workflow must be reproducible.</p>
+
+  <h2>Discover and read</h2>
+  <dl class="commands">
+    <div><dt><code>tree</code></dt><dd>Dynamic map of root documents and topics.</dd></div>
+    <div><dt><code>index [--topic …] [--kind …]</code></dt><dd>Front-matter projection for document discovery.</dd></div>
+    <div><dt><code>search &lt;query&gt;</code></dt><dd>Lexical search across tracked knowledge.</dd></div>
+    <div><dt><code>context --files &lt;src…&gt;</code></dt><dd>Map source paths to owner documents and required prerequisites.</dd></div>
+    <div><dt><code>show &lt;path…&gt;</code></dt><dd>Read selected document bodies.</dd></div>
+    <div><dt><code>serve</code></dt><dd>Start the local Viewer on <code>127.0.0.1</code> to inspect document structure, relations, and status.</dd></div>
+  </dl>
+
+  <h2>Inspect validity</h2>
+  <dl class="commands">
+    <div><dt><code>status</code></dt><dd>Validity, baseline, dirty, and growth signals.</dd></div>
+    <div><dt><code>delta</code></dt><dd>Changed code to impacted-document closure.</dd></div>
+    <div><dt><code>validate</code></dt><dd>Schema, structure, relations, links, code paths, and ledger consistency.</dd></div>
+  </dl>
+
+  <h2>Mutate safely</h2>
+  <dl class="commands">
+    <div><dt><code>new &lt;path&gt; --kind &lt;kind&gt;</code></dt><dd>Scaffold a V3 document.</dd></div>
+    <div><dt><code>adopt &lt;path…&gt;</code></dt><dd>Register valid existing documents without rewriting their bodies.</dd></div>
+    <div><dt><code>mv &lt;from&gt; &lt;to&gt;</code></dt><dd>Move a document and rewrite internal references transactionally.</dd></div>
+    <div><dt><code>commit [--verified &lt;path…&gt; | --all]</code></dt><dd>Validate, commit changed prose, and refresh changed or verified revisions.</dd></div>
+    <div><dt><code>fingerprint --update &lt;path…&gt; | --all</code></dt><dd>Refresh validated revisions in the ledger.</dd></div>
+  </dl>
+
+  <h2>Explicit operations and hooks</h2>
+  <dl class="commands">
+    <div><dt><code>prune --report</code></dt><dd>Read-only convergence signals.</dd></div>
+    <div><dt><code>upgrade</code></dt><dd>Explicit V2 migration diagnostics.</dd></div>
+    <div><dt><code>hook session-start | stop | compact</code></dt><dd>Read-only, fail-open host signals.</dd></div>
+  </dl>
+</DocsLayout>
+
+<style>
+  .commands { border-top: 1px solid var(--line); }
+  .commands div { display: grid; grid-template-columns: minmax(210px, 0.8fr) 1fr; gap: 1rem; border-bottom: 1px solid var(--line); padding: 0.9rem 0; }
+  .commands dt, .commands dd { margin: 0; }
+  .commands dd { color: var(--muted); }
+  @media (max-width: 620px) { .commands div { grid-template-columns: 1fr; gap: 0.4rem; } }
+</style>

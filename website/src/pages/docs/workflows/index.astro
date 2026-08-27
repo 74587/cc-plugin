@@ -1,0 +1,41 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="Workflows"
+  description="Use llmdoc's daily retrieval loop and explicit init, update, prune, and upgrade workflows with the correct authorization and safety boundaries."
+  section="workflows"
+>
+  <h1>Workflows</h1>
+  <p>Daily retrieval is lightweight and read-only. Knowledge mutations are explicit workflows with validation, Git boundaries, and clear result states.</p>
+
+  <h2>Daily retrieval</h2>
+  <ol>
+    <li>Choose one entry point: <code>tree</code>, <code>search</code>, <code>context --files</code>, <code>index</code>, or <code>show</code>.</li>
+    <li>Let llmdoc narrow the working set.</li>
+    <li>Use native tools for exact, live source facts.</li>
+    <li>Reapply the gate only when entering a new subsystem.</li>
+  </ol>
+
+  <h2>Initialize</h2>
+  <p>Use the <strong>init</strong> workflow only when a repository has no valid V3 knowledge surface. It investigates topic boundaries, writes a small number of high-value documents, validates them, and finishes with Git-backed state.</p>
+
+  <h2>Update</h2>
+  <p><strong>Update</strong> semantically verifies existing knowledge against code deltas and authorized reflection candidates. A document that is still correct is verified unchanged; it does not accumulate a change log.</p>
+  <div class="callout"><p>An update signal is a review set, not a prose-writing list.</p></div>
+
+  <h2>Prune</h2>
+  <p><strong>Prune</strong> converges the knowledge surface by removing duplication, fragmentation, and cheaply reconstructable inventory. Mechanical reports provide signals; a recorder still makes the semantic judgment.</p>
+
+  <h2>Upgrade</h2>
+  <p><strong>Upgrade</strong> is only for an explicitly requested V2-to-V3 migration. It is never an implicit part of update or prune.</p>
+
+  <h2>Safety and completion</h2>
+  <ul>
+    <li>Mutation workflows require confirmation and a clean llmdoc write boundary.</li>
+    <li>Validation happens before completion; failed writes are reverted through Git.</li>
+    <li><code>commit</code> excludes unrelated user-staged files and refreshes validity separately.</li>
+    <li>Workflows report one result: <code>success</code>, <code>no_change</code>, <code>dry_run</code>, <code>incomplete</code>, or <code>failed</code>.</li>
+  </ul>
+</DocsLayout>

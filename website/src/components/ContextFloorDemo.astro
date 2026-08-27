@@ -1,0 +1,92 @@
+---
+interface Props { locale?: "en" | "zh" }
+const { locale = "en" } = Astro.props;
+const isZh = locale === "zh";
+---
+
+<div class="floor" data-floor-demo>
+  <div class="floor-toolbar" role="group" aria-label={isZh ? "比较模式" : "Comparison mode"}>
+    <button type="button" data-mode="before" aria-pressed="true">
+      <span>01</span>{isZh ? "从零探索" : "Cold exploration"}
+    </button>
+    <button type="button" data-mode="after" aria-pressed="false">
+      <span>02</span>{isZh ? "llmdoc 路由" : "llmdoc routed"}
+    </button>
+    <small>{isZh ? "概念演示，不是性能基准" : "Conceptual model, not a benchmark"}</small>
+  </div>
+
+  <div class="floor-panel" data-panel="before">
+    <div class="terminal" aria-live="polite">
+      <p><i>01</i><code>ls → find → rg</code><b>{isZh ? "建立仓库地图" : "map the repository"}</b></p>
+      <p><i>02</i><code>read × many</code><b>{isZh ? "寻找模块边界" : "infer boundaries"}</b></p>
+      <p><i>03</i><code>search again</code><b>{isZh ? "补齐遗漏关联" : "recover missed relations"}</b></p>
+      <p class="cursor"><i>04</i><code>context?</code><b>{isZh ? "仍在重建" : "still reconstructing"}</b></p>
+    </div>
+    <div class="signals">
+      <p><span>{isZh ? "工具调用" : "Tool calls"}</span><strong>{isZh ? "反复、广泛" : "Repeated · broad"}</strong></p>
+      <p><span>{isZh ? "上下文占用" : "Context footprint"}</span><strong>{isZh ? "持续增长" : "Keeps growing"}</strong></p>
+      <p><span>{isZh ? "关键信息密度" : "Signal density"}</span><strong>{isZh ? "不稳定" : "Variable"}</strong></p>
+    </div>
+  </div>
+
+  <div class="floor-panel" data-panel="after" hidden>
+    <div class="terminal" aria-live="polite">
+      <p><i>01</i><code>llmdoc tree</code><b>{isZh ? "读取知识地图" : "read the knowledge map"}</b></p>
+      <p><i>02</i><code>llmdoc context --files</code><b>{isZh ? "定位知识所有者" : "locate knowledge owners"}</b></p>
+      <p><i>03</i><code>llmdoc show</code><b>{isZh ? "仅取需要的正文" : "load only what matters"}</b></p>
+      <p class="cursor ready"><i>04</i><code>context ✓</code><b>{isZh ? "开始工作" : "begin the work"}</b></p>
+    </div>
+    <div class="signals">
+      <p><span>{isZh ? "工具调用" : "Tool calls"}</span><strong>{isZh ? "按意图路由" : "Intent-routed"}</strong></p>
+      <p><span>{isZh ? "上下文占用" : "Context footprint"}</span><strong>{isZh ? "有界" : "Bounded"}</strong></p>
+      <p><span>{isZh ? "关键信息密度" : "Signal density"}</span><strong>{isZh ? "聚焦" : "Focused"}</strong></p>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-floor-demo]").forEach((demo) => {
+    const buttons = Array.from(demo.querySelectorAll<HTMLButtonElement>("[data-mode]"));
+    const panels = Array.from(demo.querySelectorAll<HTMLElement>("[data-panel]"));
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const mode = button.dataset.mode;
+        buttons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        panels.forEach((panel) => { panel.hidden = panel.dataset.panel !== mode; });
+      });
+    });
+  });
+</script>
+
+<style>
+  .floor { border: 1px solid var(--line); background: rgba(10, 14, 9, 0.92); box-shadow: 18px 18px 0 rgba(167, 255, 106, 0.035); }
+  .floor-toolbar { display: flex; align-items: stretch; border-bottom: 1px solid var(--line); }
+  .floor-toolbar button { border: 0; border-right: 1px solid var(--line); padding: 0.85rem 1rem; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 0.76rem; cursor: pointer; }
+  .floor-toolbar button span { margin-right: 0.55rem; color: var(--faint); }
+  .floor-toolbar button[aria-pressed="true"] { background: var(--panel-2); color: var(--green); box-shadow: inset 0 -2px var(--green); }
+  .floor-toolbar small { margin-left: auto; align-self: center; padding-inline: 1rem; color: var(--faint); font-family: var(--mono); font-size: 0.67rem; }
+  .floor-panel { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(250px, 0.75fr); }
+  .floor-panel[hidden] { display: none; }
+  .terminal { min-height: 330px; border-right: 1px solid var(--line); padding: clamp(1rem, 3vw, 2rem); font-family: var(--mono); }
+  .terminal p { display: grid; grid-template-columns: 2rem minmax(150px, 0.7fr) 1fr; gap: 0.8rem; align-items: baseline; margin: 0 0 1.5rem; }
+  .terminal i { color: var(--faint); font-size: 0.68rem; font-style: normal; }
+  .terminal code { color: var(--amber); }
+  .terminal b { color: var(--muted); font-family: var(--sans); font-size: 0.82rem; font-weight: 500; }
+  .terminal .cursor::after { content: "▋"; margin-left: 0.4rem; color: var(--amber); animation: cursor 1s steps(1) infinite; }
+  .terminal .ready code, .terminal .ready::after { color: var(--green); }
+  .signals { display: grid; align-content: center; padding: clamp(1rem, 3vw, 2rem); }
+  .signals p { margin: 0; border-bottom: 1px solid var(--line); padding-block: 1rem; }
+  .signals span, .signals strong { display: block; }
+  .signals span { color: var(--faint); font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; }
+  .signals strong { margin-top: 0.3rem; color: var(--ink); font-family: var(--serif); font-size: 1.25rem; font-weight: 500; }
+  @keyframes cursor { 50% { opacity: 0; } }
+  @media (max-width: 760px) {
+    .floor-toolbar small { display: none; }
+    .floor-toolbar button { flex: 1; }
+    .floor-panel { grid-template-columns: 1fr; }
+    .terminal { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+    .terminal p { grid-template-columns: 1.5rem 1fr; }
+    .terminal b { grid-column: 2; }
+  }
+  @media (prefers-reduced-motion: reduce) { .terminal .cursor::after { animation: none; } }
+</style>
