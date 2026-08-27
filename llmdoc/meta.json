@@ -6,7 +6,7 @@
   },
   "documents": {
     "architecture.mdx": {
-      "validatedRevision": "61ef5822ec305f61ebf41bb826e143a889c31e5e"
+      "validatedRevision": "0157d17e0cca2eb0ed0aaf20da41b80035be3a2e"
     },
     "cli-runtime/state-and-validation.mdx": {
       "validatedRevision": "61ef5822ec305f61ebf41bb826e143a889c31e5e"
@@ -15,10 +15,10 @@
       "validatedRevision": "61ef5822ec305f61ebf41bb826e143a889c31e5e"
     },
     "plugin-packaging/claude-and-codex.mdx": {
-      "validatedRevision": "17974905ccc00efd69053c5e39fe3cbb06954e2c"
+      "validatedRevision": "0157d17e0cca2eb0ed0aaf20da41b80035be3a2e"
     },
     "plugin-packaging/development-and-release.mdx": {
-      "validatedRevision": "17974905ccc00efd69053c5e39fe3cbb06954e2c"
+      "validatedRevision": "0157d17e0cca2eb0ed0aaf20da41b80035be3a2e"
     },
     "workflows/init-and-update.mdx": {
       "validatedRevision": "61ef5822ec305f61ebf41bb826e143a889c31e5e"
