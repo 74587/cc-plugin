@@ -1,5 +1,5 @@
 ---
-description: Claude canonical surface、Codex 生成面、共同 CLI runtime 与跨宿主一致性不变量。
+description: Claude canonical surface、Codex 生成面，以及防同名依赖遮蔽的 lifecycle hook runtime 启动边界。
 kind: architecture
 code:
   paths:
@@ -22,16 +22,18 @@ code:
 
 # Claude 与 Codex 表面
 
-## 真相源与共同 runtime
+## 真相源与 runtime 启动边界
 
 Claude 根插件是手工维护的 canonical surface：skills 定义 Retrieval/Reflection/Stable Knowledge Gate 与显式工作流，三个 agent 定义调查、候选捕获和正式写入边界。Codex 的 skills、agents、manifest 与 marketplace 是转换产物，不得成为独立设计源。
 
-两种宿主都把确定性行为收敛到外部 `@tokenroll/llmdoc` CLI。统一调用形式是 `npx -y @tokenroll/llmdoc <cmd>`：不向消费仓库写依赖；需要复现时在包名中固定版本；不得退回会解析错误包名或交互挂起的裸调用。
+两种宿主都把确定性行为收敛到外部 `@tokenroll/llmdoc` CLI。普通交互命令使用 `npx -y @tokenroll/llmdoc <cmd>`：不向消费仓库写依赖；需要复现时在包名中固定版本；不得退回会解析错误包名或交互挂起的裸调用。
+
+生命周期 hook 属于不同的启动边界：宿主从消费仓库的 cwd 调用 npm，而该仓库可能暴露同名的 local/`file:` 依赖。npm 会让这个依赖先满足普通 package identity；即使其 bin 尚未构建或不是应运行的发布 runtime，进程也不会自动回退到 registry CLI。hook 因此必须通过一个不同 identity 的 scoped npm alias 请求 `@tokenroll/llmdoc`，再调用它暴露的 `llmdoc hook *` bin。alias 只隔离 package 解析，不改变共同 runtime、参数或输出契约，也不应用于日常交互命令。
 
 ## 生成与一致性不变量
 
 转换必须在临时副本生成后替换式同步，因为生成器不保证清除陈旧输出。Codex 角色文本不手工维护；宿主特有 front matter/TOML 可以不同，实际 skill 与 agent 指令正文必须与 Claude canonical 一致。被 skill 按需加载的 reference 同样属于可执行 prompt surface：Codex 镜像必须包含相同正文，相关 skill/agent 也必须保留可发现的加载路径。
 
-`scripts/check-codex-surface.mjs` 在 CI 中机械校验版本/marketplace 身份、五个 skill 与三个 agent 的正文一致性、按需 reference 的正文 parity 与加载路径、Reflection Gate 约束和 hook 调用。它还分别遍历 `skills/` 与 `.agents/skills/`，用 `gray-matter` 解析每份 `SKILL.md` 的 YAML front matter，并要求 `name`、`description` 是非空字符串；这是两侧各自的语法门槛，不替代跨宿主正文 parity。人工 checklist 只补宿主 UI policy、知识拓扑质量与信任模型等无法从正文等价判断的部分。
+`scripts/check-codex-surface.mjs` 在 CI 中机械校验版本/marketplace 身份、五个 skill 与三个 agent 的正文一致性、按需 reference 的正文 parity 与加载路径、Reflection Gate 约束和三种 lifecycle hook 的 alias 调用。它还分别遍历 `skills/` 与 `.agents/skills/`，用 `gray-matter` 解析每份 `SKILL.md` 的 YAML front matter，并要求 `name`、`description` 是非空字符串；这是两侧各自的语法门槛，不替代跨宿主正文 parity。人工 checklist 只补宿主 UI policy、知识拓扑质量与信任模型等无法从正文等价判断的部分。
 
-hooks 位于共享插件根，一份配置供两种宿主使用；它们保持 fail-open、只读，且由安装宿主按自己的信任模型启用。
+hooks 位于共享插件根，一份配置供两种宿主使用；它们保持只读，且由安装宿主按自己的信任模型启用。CLI 成功启动后 hook 逻辑保持 fail-open，但进程启动前的 npm 解析或 registry 失败不受这层保护；保留 alias 启动边界是避免本地同名依赖把错误暴露在宿主生命周期中的必要条件。
