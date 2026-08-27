@@ -1,5 +1,5 @@
 ---
-description: llmdoc 的职责分层、三道知识门与跨宿主真相源边界。
+description: llmdoc 语义路由图的设计原则、职责分层，以及稳定知识与 owner 路由的独立门槛。
 kind: architecture
 relations:
   related:
@@ -22,9 +22,19 @@ code:
     - README.md
     - README.zh-CN.md
     - docs/v3-design/*.md
+    - skills/llmdoc/references/knowledge-topology.md
+    - .agents/skills/llmdoc/references/knowledge-topology.md
 ---
 
 # llmdoc 仓库整体架构
+
+## 设计模型：最小充分的语义路由图
+
+llmdoc 不是仓库的压缩副本，而是让任务在广泛探索前抵达正确 owner 的最小连通知识图。稳定正文保存难以从源码快速恢复的决策、理由、边界、不变量、契约与失败语义；源码、测试、schema 和 manifest 继续保存实时事实。知识边界因此跟随职责、authority 和 review obligation，而不是机械复制 package 或目录布局。
+
+渐进披露是这张图的读取约束：`tree` 提供地图，description 与 search 提供概念候选，`code.paths` 与 context 提供变更 owner，relations 补充必读闭包，最后才加载选中正文并进入源码。每一层都应允许调用者停止，而不是迫使其先读完整仓库知识。
+
+`code.paths` 的目的不是制造覆盖率，而是把变化与可能失效的知识耦合。最小充分意味着每个 first-class 决策表面都可达，同时允许生成物、barrel、普通 helper 和没有持久语义的实现细节有意保持 unmapped。
 
 ## 职责分层
 
@@ -35,10 +45,11 @@ code:
 
 核心分工是“提示词做判断，CLI 做机械”：prompt 不复制 diff、schema 或 git 逻辑；稳定正文也不复制命令、文件和测试库存。
 
-## 三道知识门
+## 检索、反思与双重维护门
 
 - **Retrieval Gate**：首次探索或进入新子系统时，按意图选择一个 CLI 入口；CLI 圈定工作集后，原生工具核对源码、行号、测试与 git 等实时事实。
 - **Reflection Gate**：用户纠正、验证证伪、重大返工、指令违规等强信号，由 `reflector` 写成 `.llmdoc-tmp/reflections/pending/` 候选；不保存 transcript，也不直接写 tracked knowledge。
 - **Stable Knowledge Gate**：`recorder` 只晋升会改变未来选择、难以从 canonical source 快速恢复、足够持久且归属明确的结论。候选和代码 delta 都只是复核证据，不是正文写入指令。
+- **Routing Gate**：独立检查自然概念查询与代表性决策源码能否到达 canonical owner。正文仍正确时可能只需修复路由；文件被映射也不要求在正文中逐项转述。
 
 pending 候选即使没有代码 delta 也能触发 update；只有显式授权的 reflection update 才能验证、查重并把成熟规则折入既有 architecture/guide，永不恢复 tracked reflection 树。
