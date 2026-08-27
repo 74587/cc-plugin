@@ -119,6 +119,10 @@ counts, and Git state.
 `context --files` evaluates every input independently and reports
 `unmappedFiles`; a non-empty impacted set never hides unmapped siblings.
 
+Plugin lifecycle hooks invoke the same scoped CLI through an npm package alias.
+This prevents a same-name local or `file:` dependency without a built bin from
+shadowing the hook runtime; normal interactive commands keep the shorter form.
+
 ```bash
 # Map the knowledge surface
 npx -y @tokenroll/llmdoc tree --docs
