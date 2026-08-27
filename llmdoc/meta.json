@@ -9,10 +9,10 @@
       "validatedRevision": "0157d17e0cca2eb0ed0aaf20da41b80035be3a2e"
     },
     "cli-runtime/state-and-validation.mdx": {
-      "validatedRevision": "61ef5822ec305f61ebf41bb826e143a889c31e5e"
+      "validatedRevision": "88e578b04885de7a8e104887834c57c1b1cff5ba"
     },
     "cli-runtime/retrieval-and-mutation.mdx": {
-      "validatedRevision": "61ef5822ec305f61ebf41bb826e143a889c31e5e"
+      "validatedRevision": "88e578b04885de7a8e104887834c57c1b1cff5ba"
     },
     "plugin-packaging/claude-and-codex.mdx": {
       "validatedRevision": "0157d17e0cca2eb0ed0aaf20da41b80035be3a2e"
@@ -21,7 +21,7 @@
       "validatedRevision": "832bcf943c10528b60f01a02a7d8ce607ea44699"
     },
     "workflows/init-and-update.mdx": {
-      "validatedRevision": "61ef5822ec305f61ebf41bb826e143a889c31e5e"
+      "validatedRevision": "88e578b04885de7a8e104887834c57c1b1cff5ba"
     },
     "workflows/prune-and-upgrade.mdx": {
       "validatedRevision": "61ef5822ec305f61ebf41bb826e143a889c31e5e"
