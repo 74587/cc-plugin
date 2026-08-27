@@ -6,28 +6,28 @@
   },
   "documents": {
     "architecture.mdx": {
-      "validatedRevision": "33b263754aa85d53e3a19a1daa67e24420e0a45e"
+      "validatedRevision": "c4ab503b053420051eff1a8b59acdcc1e372246a"
     },
     "cli-runtime/state-and-validation.mdx": {
-      "validatedRevision": "33b263754aa85d53e3a19a1daa67e24420e0a45e"
+      "validatedRevision": "c4ab503b053420051eff1a8b59acdcc1e372246a"
     },
     "cli-runtime/retrieval-and-mutation.mdx": {
-      "validatedRevision": "33b263754aa85d53e3a19a1daa67e24420e0a45e"
+      "validatedRevision": "c4ab503b053420051eff1a8b59acdcc1e372246a"
     },
     "plugin-packaging/claude-and-codex.mdx": {
-      "validatedRevision": "33b263754aa85d53e3a19a1daa67e24420e0a45e"
+      "validatedRevision": "c4ab503b053420051eff1a8b59acdcc1e372246a"
     },
     "plugin-packaging/development-and-release.mdx": {
-      "validatedRevision": "33b263754aa85d53e3a19a1daa67e24420e0a45e"
+      "validatedRevision": "c4ab503b053420051eff1a8b59acdcc1e372246a"
     },
     "workflows/init-and-update.mdx": {
-      "validatedRevision": "33b263754aa85d53e3a19a1daa67e24420e0a45e"
+      "validatedRevision": "c4ab503b053420051eff1a8b59acdcc1e372246a"
     },
     "workflows/prune-and-upgrade.mdx": {
-      "validatedRevision": "33b263754aa85d53e3a19a1daa67e24420e0a45e"
+      "validatedRevision": "c4ab503b053420051eff1a8b59acdcc1e372246a"
     },
     "website/product-and-deployment.mdx": {
-      "validatedRevision": "c13545ef43718fa7114c57b382019027b2169451"
+      "validatedRevision": "c4ab503b053420051eff1a8b59acdcc1e372246a"
     }
   },
   "convergence": {
