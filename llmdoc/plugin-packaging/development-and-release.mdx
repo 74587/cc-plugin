@@ -10,6 +10,7 @@ code:
     - .github/workflows/release.yml
     - README.md
     - README.zh-CN.md
+    - docs/agent-integration.md
 ---
 
 # 开发、验证与发布
@@ -27,3 +28,7 @@ code:
 CLI 命令或输出语义变化必须在同一 change-set 同步：canonical skills/agents、生成的 Codex 表面、版本与 lockfile、双语 README/design docs，以及 dogfood `llmdoc/`。精确文件数量由自动化维护，不在正文复制。
 
 `scripts/check-codex-surface.mjs` 负责版本、身份与生成正文 parity；CI 还运行 lint、typecheck、test、build、prompt budget、dogfood validate 和消费者安装 smoke。自动化通过后仍需审查语义是否在所有公开表面一致，特别是宿主 UI policy 与授权边界。
+
+## 外部宿主指引复核不变量
+
+公开的外部宿主安装或启用指导在发布前必须依据宿主当时的官方用户文档复核。仓库中存在或本地可调用的命令，不足以单独成为主快速入门路径的依据；可选、恢复性或其他条件性步骤必须保留其条件语义。具体命令、UI 文案与步骤序列属于易变事实，不在稳定知识中固定。
