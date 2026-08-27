@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import matter from "gray-matter";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const errors = [];
@@ -78,21 +79,46 @@ for (const [label, version] of versionSurfaces) {
   }
 }
 
-// 3) Codex skills:每个 SKILL.md 有 frontmatter name + description
-const skillsRoot = path.join(root, ".agents/skills");
-if (fs.existsSync(skillsRoot)) {
-  for (const dir of fs.readdirSync(skillsRoot)) {
-    const skillFile = path.join(skillsRoot, dir, "SKILL.md");
+// 3) Claude/Codex skills:每个 SKILL.md 的 YAML frontmatter 可解析且有 name + description
+function validateSkills(skillsDir) {
+  const skillsRoot = path.join(root, skillsDir);
+  if (!fs.existsSync(skillsRoot)) return;
+
+  for (const entry of fs.readdirSync(skillsRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+
+    const rel = path.posix.join(skillsDir, entry.name, "SKILL.md");
+    const skillFile = path.join(root, rel);
     if (!fs.existsSync(skillFile)) {
-      errors.push(`.agents/skills/${dir}: 缺少 SKILL.md`);
+      errors.push(`${path.posix.join(skillsDir, entry.name)}: 缺少 SKILL.md`);
       continue;
     }
-    const head = fs.readFileSync(skillFile, "utf8").split("\n---")[0];
-    if (!/^---/.test(head)) errors.push(`.agents/skills/${dir}/SKILL.md: 缺少 frontmatter`);
-    if (!/\bname:/.test(head)) errors.push(`.agents/skills/${dir}/SKILL.md: frontmatter 缺少 name`);
-    if (!/\bdescription:/.test(head)) errors.push(`.agents/skills/${dir}/SKILL.md: frontmatter 缺少 description`);
+
+    const source = fs.readFileSync(skillFile, "utf8");
+    if (!source.startsWith("---\n") && !source.startsWith("---\r\n")) {
+      errors.push(`${rel}: 缺少 frontmatter`);
+      continue;
+    }
+
+    let data;
+    try {
+      data = matter(source).data;
+    } catch (error) {
+      errors.push(`${rel}: frontmatter YAML 无法解析 — ${error.message}`);
+      continue;
+    }
+
+    if (typeof data.name !== "string" || data.name.trim() === "") {
+      errors.push(`${rel}: frontmatter 缺少有效 name`);
+    }
+    if (typeof data.description !== "string" || data.description.trim() === "") {
+      errors.push(`${rel}: frontmatter 缺少有效 description`);
+    }
   }
 }
+
+validateSkills("skills");
+validateSkills(".agents/skills");
 
 // 4) 三个角色跨宿主齐备；Reflector 只能写临时候选，不恢复 tracked reflection 树。
 for (const agent of ["investigator", "reflector", "recorder"]) {

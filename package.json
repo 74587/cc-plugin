@@ -12,7 +12,8 @@
     "check:prompts": "node scripts/check-prompt-budget.mjs"
   },
   "devDependencies": {
-    "@tokenroll/llmdoc": "file:cli"
+    "@tokenroll/llmdoc": "file:cli",
+    "gray-matter": "^4.0.3"
   },
   "overrides": {
     "vite": "6.4.3"
