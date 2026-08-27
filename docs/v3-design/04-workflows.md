@@ -5,22 +5,23 @@
 | 命令 | 目的 | 触发 | 主 assistant 可建议 |
 |---|---|---|---|
 | `init` | 为无 llmdoc 的项目首次建立知识体系 | 显式调用 | 项目缺 llmdoc 时,仅建议 |
-| `update` | 按历史有效版本与当前代码差异同步知识 | 显式调用 | 任务结束且存在持久知识变化时,确认后执行 |
+| `update` | 按历史有效版本、当前代码差异与反思候选同步知识 | 显式调用 | 存在持久知识变化或 pending 反思候选时,确认后执行 |
 | `prune` | 收敛重复、碎片与膨胀的知识 | 显式调用 | update 后命中 growth gate 时,确认后执行 |
 | `upgrade` | 迁移旧 major 结构(V2 → V3) | **仅显式调用,永不建议** | 否 |
 
 授权模型:手动调用即授权该次声明 scope;主动建议须获得一次确认,确认后完整运行不再二次确认;scope 异常扩张时暂停重新询问。
 
-## 2. Agent 角色(两个)
+## 2. Agent 角色(三个)
 
 | Agent | 证据来源 | 可写 | 禁止写 | 职责 |
 |---|---|---|---|---|
 | **Investigator** | 代码、配置、git、现有文档 | `.llmdoc-tmp/investigations/` | `llmdoc/`、`meta.json` | 工程事实调查、影响面确认、缺口与冲突识别;报告必须区分事实/推断/未验证假设 |
+| **Reflector** | 任务摘要、用户纠正、验证失败、返工证据、相关代码/文档 | `.llmdoc-tmp/reflections/pending/` | `llmdoc/`、`meta.json`、源码 | 把强信号改写为隐私安全的结构化晋升候选;不保存完整 transcript |
 | **Recorder** | CLI 报告、调查报告、现有知识 | `llmdoc/` 与 `meta.json`(经 02 的 git-based 协议) | 源码 | 唯一正式知识写入者:topic 边界、kind 选择、front matter、正文颗粒度、新建/改写/合并/删除 |
 
-变化说明:V2 的 Worker(通用代码执行)与 Reflector(反思案例管线)移除。代码实现属于宿主 assistant;经验沉淀改为 update 时由 Recorder 直接回灌(见 4.3)。
+变化说明:V2 的 Worker 仍由宿主 assistant 取代;Reflector 以受限形式恢复,只承担强信号候选捕获,不恢复 reflection kind、tracked memory 树或案例数量阈值。稳定经验仍由 Recorder 在 update 中回灌(见 4.2)。
 
-主 assistant 负责:与用户对齐和授权、选择命令与 scope、依据 CLI 信号选 light/deep、汇总报告、维护 LLMDOC_STATE。它不绕过 Recorder 直接改 `llmdoc/`,也不把调查报告全文注入长期上下文。
+主 assistant 负责:与用户对齐和授权、识别强反思信号、选择命令与 scope、依据 CLI 信号选 light/deep、汇总报告、维护 LLMDOC_STATE。它不绕过 Recorder 直接改 `llmdoc/`,也不把调查报告或对话全文注入长期上下文。
 
 ## 3. 渐进读取协议(Operating)
 
@@ -38,7 +39,7 @@ SessionStart hook → 一行状态信号
 
 ### 3.2 Compact continuation
 
-Compact summary 必须保存 `LLMDOC_STATE`:active goal、已读文档路径、关键结论、用户决策、下一步、未决风险。
+Compact summary 必须保存 `LLMDOC_STATE`:active goal、已读文档路径、关键结论、用户决策、pending lesson candidates、下一步、未决风险。
 
 ```text
 同一任务 + LLMDOC_STATE 足够 + 相关文档未变化
@@ -51,9 +52,10 @@ Compact summary 必须保存 `LLMDOC_STATE`:active goal、已读文档路径、�
 
 主 assistant 判断(hook stop 只给 best-effort 提醒):
 
-1. 是否有持久知识变化(架构/契约/流程/约定变化、现有文档失效、新增能力)→ 建议 update;
-2. 是否值得留过程记录 → 由主 assistant 判断,写 `.llmdoc-tmp/records/`(不进 git 知识面,不需要用户授权);
-3. 仅实现细节变化且文档仍准确 → 不建议。
+1. 是否出现强反思信号(用户明确纠正、验证证明方案错误、重大返工/回滚、指令违规或可复用 missing signal)→ 由 Reflector 写 pending 候选;
+2. 是否有持久知识变化或 pending 候选 → 简述原因并确认后运行 update;候选本身就是 update 信号,不依赖代码 delta;
+3. 是否值得留一般过程记录 → 由主 assistant 判断,写 `.llmdoc-tmp/records/`;
+4. 仅实现细节变化、无强信号且文档仍准确 → 不建议。
 
 ## 4. 命令 SOP
 
@@ -73,10 +75,12 @@ preflight: 确认 llmdoc/ 不存在(存在有效 V3 → 拒绝并建议 update;V
 ### 4.2 Update(light / deep)
 
 ```text
-llmdoc delta → 影响闭包 + unmapped paths + 模式信号
+llmdoc status/delta → 影响闭包 + unmapped paths + 模式信号
+--reflection → 读取显式候选;未给路径时读取 pending/ 下全部 Markdown 候选
+→ 质量门:验证 trigger、错误动作、root cause、预防规则、scope、confidence 与 existing owner
 light: 影响明确、全部映射到现有文档、无结构变化
   → Recorder 直接同步受影响文档 → validate → fingerprint --update
-deep: 存在 unmapped 区域 / topic 结构变化 / baseline 不可用 / 事实冲突 / 闭包过大
+deep: 存在 unmapped 区域 / lesson owner 或 root cause 不清 / topic 结构变化 / baseline 不可用 / 事实冲突 / 闭包过大
   → Investigator(可多个并行)调查 → Recorder 综合写入 → validate → fingerprint
 ```
 
@@ -85,7 +89,7 @@ deep: 存在 unmapped 区域 / topic 结构变化 / baseline 不可用 / 事实�
 - 优先改写/合并现有文档,现有边界装不下才新建;
 - 局部 scope 只刷新对应文档的 `validatedRevision`,不推进 baseline。
 
-**经验回灌**(代替 V2 的 reflection 晋升):update 时若本次任务暴露了可复用经验(踩坑、边界、被证明有效的策略),Recorder 直接把它改写进相关 architecture/guide 的正文——作为不变量、反例或注意事项,而不是独立的 reflection 文档。没有案例计数阈值;判断标准是"下次做同类任务的 AI 是否需要这条知识"。
+**经验回灌**:Reflector 候选是临时证据队列,不是稳定文档。Recorder 必须先用 `search/show` 找 owner 并验证事实;成熟经验改写进相关 architecture/guide 的正文,作为不变量、反例或注意事项。用户纠正能证明用户意图,仓库事实仍须代码、测试或稳定文档证据。瞬时工具失败、单任务偏好和未验证推测不晋升。success 后候选移入 `.llmdoc-tmp/reflections/resolved/YYYY-MM-DD/`;incomplete/failed 时继续 pending。
 
 ### 4.3 Prune
 
@@ -115,7 +119,10 @@ llmdoc prune --report(规模、重复候选、碎片候选)
 .llmdoc-tmp/            # git-ignored,删除不影响正式知识
 ├── cache/              # 搜索索引等,可再生
 ├── investigations/     # Investigator 调查报告
+├── reflections/
+│   ├── pending/        # Reflector 生成的强信号候选
+│   └── resolved/       # 已晋升、已覆盖或已驳回的候选
 └── records/            # 工作记录、过去的 plan、会话沉淀原料
 ```
 
-records 不在 AI 常规阅读路径上(index/search 默认不覆盖),只在"考古"时按需 grep;膨胀无碍,定期清理即可。
+records 与 reflections 都不进入常规知识检索。hooks 只统计 pending Markdown 文件并发出短状态信号,不读取内容或 transcript;`/llmdoc:update --reflection` 才消费候选。

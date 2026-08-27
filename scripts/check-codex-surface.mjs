@@ -79,7 +79,39 @@ if (fs.existsSync(skillsRoot)) {
   }
 }
 
-// 4) hooks.json:合法 JSON 且所有命令使用 scoped 包名 + 非交互安装确认
+// 4) 三个角色跨宿主齐备；Reflector 只能写临时候选，不恢复 tracked reflection 树。
+for (const agent of ["investigator", "reflector", "recorder"]) {
+  for (const rel of [`agents/${agent}.md`, `.codex/agents/${agent}.toml`]) {
+    if (!fs.existsSync(path.join(root, rel))) errors.push(`${rel}: 缺少 ${agent} 角色契约`);
+  }
+}
+for (const rel of ["agents/worker.md", ".codex/agents/worker.toml"]) {
+  if (fs.existsSync(path.join(root, rel))) errors.push(`${rel}: 不应恢复 V2 worker 角色`);
+}
+for (const rel of ["agents/reflector.md", ".codex/agents/reflector.toml"]) {
+  if (!fs.existsSync(path.join(root, rel))) continue;
+  const content = fs.readFileSync(path.join(root, rel), "utf8");
+  if (!content.includes(".llmdoc-tmp/reflections/pending/")) {
+    errors.push(`${rel}: Reflector 必须把候选限制在 .llmdoc-tmp/reflections/pending/`);
+  }
+  if (!content.includes("Never write tracked `llmdoc/`")) {
+    errors.push(`${rel}: Reflector 必须显式禁止写 tracked llmdoc`);
+  }
+}
+for (const rel of ["skills/llmdoc/SKILL.md", ".agents/skills/llmdoc/SKILL.md"]) {
+  const content = fs.readFileSync(path.join(root, rel), "utf8");
+  if (!content.includes("## Reflection Gate") || !content.includes(".llmdoc-tmp/reflections/pending/")) {
+    errors.push(`${rel}: operating skill 缺少强信号 Reflection Gate`);
+  }
+}
+for (const rel of ["skills/update/SKILL.md", ".agents/skills/update/SKILL.md"]) {
+  const content = fs.readFileSync(path.join(root, rel), "utf8");
+  if (!content.includes("--reflection") || !content.includes("pending candidate is an update signal")) {
+    errors.push(`${rel}: update skill 缺少 reflection 候选触发契约`);
+  }
+}
+
+// 5) hooks.json:合法 JSON 且所有命令使用 scoped 包名 + 非交互安装确认
 const hooks = readJson("hooks/hooks.json");
 if (hooks) {
   const commands = JSON.stringify(hooks).match(/"command":"([^"]+)"/g) ?? [];

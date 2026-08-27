@@ -28,12 +28,14 @@ code:
 这个仓库把 `llmdoc` 拆成四层相互配合的能力：
 
 - `cli/` 是运行时实体，负责扫描 `llmdoc/`、校验 front matter 与 `meta.json`、做检索与影响面分析，并暴露 hook 与维护命令。
-- 仓库根的 Claude 表面负责判断性 SOP：`skills/` 下五个 SKILL.md（`llmdoc` operating skill 加 `init/update/prune/upgrade` 四个显式工作流），`agents/investigator.md` 与 `agents/recorder.md` 两个角色契约，`hooks/hooks.json` 只把生命周期事件转发到 CLI。
+- 仓库根的 Claude 表面负责判断性 SOP：`skills/` 下五个 SKILL.md（`llmdoc` operating skill 加 `init/update/prune/upgrade` 四个显式工作流），`agents/investigator.md`、`agents/reflector.md` 与 `agents/recorder.md` 三个角色契约，`hooks/hooks.json` 只把生命周期事件转发到 CLI。
 - ACPlugin 生成的 Codex 兼容表面位于 `.agents/plugins/marketplace.json`、`.agents/skills/`、`.codex/agents/` 与 `.codex-plugin/plugin.json`，与 Claude 侧共用公开身份 `llmdoc@llmdoc-plugin`（身份与一致性约束见 `plugin-packaging/claude-and-codex.mdx`）。
 - `llmdoc/` 是仓库自身的 dogfood 知识面，用 V3 两层目录反过来解释这套实现本身。
 
-V3 的分工是“提示词只做判断，CLI 负责机械”。命令文档决定何时走 `init`、`update`、`prune`、`upgrade`；目录扫描、JSON schema 校验、git revision 检查、delta 计算和 hook 输出都落在 `cli/src/`。全部提示词表面——operating skill、四个工作流 skill、两个 agent 契约、hooks 与 README 内嵌配方（含给无插件平台的 AGENTS.md 配方）——以 `@tokenroll/llmdoc` CLI 为共同 runtime，统一按 `npx -y @tokenroll/llmdoc <cmd>` 外部工具形式调用；调用语义与禁例见 `plugin-packaging/claude-and-codex.mdx`。
+V3 的分工是“提示词只做判断，CLI 负责机械”。命令文档决定何时走 `init`、`update`、`prune`、`upgrade`；目录扫描、JSON schema 校验、git revision 检查、delta 计算和 hook 输出都落在 `cli/src/`。全部提示词表面——operating skill、四个工作流 skill、三个 agent 契约、hooks 与 README 内嵌配方（含给无插件平台的 AGENTS.md 配方）——以 `@tokenroll/llmdoc` CLI 为共同 runtime，统一按 `npx -y @tokenroll/llmdoc <cmd>` 外部工具形式调用；调用语义与禁例见 `plugin-packaging/claude-and-codex.mdx`。
 
-Retrieval Gate 是这个分工在检索侧的落实：第一次发现式检索及进入新子系统时，按意图从 `search`（概念或契约）、`context --files`（具体源码文件）、`tree`（范围不明）、`index`（已知 topic/kind）或 `show`（已定位文档正文）中选择单一入口，而不是把命令跑成固定序列；两个 agent 契约同样不以固定命令清单开场。CLI 圈定工作集后，原生工具负责源码、行号、测试、计数和 git 状态等实时精确事实——investigator 契约把这条边界写成显式规则。
+Retrieval Gate 是这个分工在检索侧的落实：第一次发现式检索及进入新子系统时，按意图从 `search`（概念或契约）、`context --files`（具体源码文件）、`tree`（范围不明）、`index`（已知 topic/kind）或 `show`（已定位文档正文）中选择单一入口，而不是把命令跑成固定序列。CLI 圈定工作集后，原生工具负责源码、行号、测试、计数和 git 状态等实时精确事实——investigator 契约把这条边界写成显式规则。
+
+Reflection Gate 则负责把高信号的过程错误送入受限学习闭环：用户纠正、验证证伪、重大返工或回滚、指令违规，以及可复用的 missing signal，先由 `reflector` 改写成 `.llmdoc-tmp/reflections/pending/` 下的隐私安全候选；它不保存 transcript，也不直接写稳定知识。pending 候选即使没有代码 delta 也会触发 update 提醒，只有授权的 `/llmdoc:update --reflection` 才会验证事实、查重并让 `recorder` 把成熟规则折入既有 architecture/guide；这条路径不会恢复 tracked reflection 树。
 
 按主题继续阅读（topic 无入口节点，用 `llmdoc index --topic <t>` 看各文档描述）：`cli-runtime/` 扫描/状态/校验读 `state-and-validation.mdx`、命令面读 `retrieval-and-mutation.mdx`；`workflows/` 读 `init-and-update.mdx` 与 `prune-and-upgrade.mdx`；`plugin-packaging/` 双平台表面读 `claude-and-codex.mdx`、开发发布读 `development-and-release.mdx`。

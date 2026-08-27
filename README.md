@@ -43,8 +43,9 @@ V3 assumes the CLI is always present. Navigation, search, validation, delta dete
   - `update`
   - `prune`
   - `upgrade`
-- Two roles:
+- Three roles:
   - `investigator`: gathers evidence into `.llmdoc-tmp/investigations/`
+  - `reflector`: captures high-signal corrections and verified mistakes into `.llmdoc-tmp/reflections/pending/`
   - `recorder`: the only writer of tracked `llmdoc/` knowledge and `llmdoc/meta.json`
 
 Claude is the canonical authoring surface. Codex packaging is generated from that surface through ACPlugin conversion. Other platforms use a thin `AGENTS.md` recipe plus `npx @tokenroll/llmdoc`.
@@ -108,6 +109,7 @@ Synchronizes tracked knowledge with the current repository state.
 
 - the assistant should suggest it after meaningful durable knowledge changes, but only after user confirmation
 - after confirmation, the workflow may complete without repeated confirmation unless the scope expands materially
+- `--reflection` consumes pending high-signal correction or failure candidates even when source delta is empty
 - the command chooses the lightest sufficient path from CLI signals:
   - direct recorder update for clearly bounded changes
   - investigator plus recorder when impact is unclear or structural
@@ -147,7 +149,7 @@ Daily use is CLI-first:
 3. use `npx @tokenroll/llmdoc context --files ...` or `npx @tokenroll/llmdoc search ...`
 4. use `npx @tokenroll/llmdoc show ...` only for the documents that matter
 
-There is no V2 startup pack, root router document, worker, reflector, or `sync.md` contract in V3. The CLI is the entrypoint.
+There is no V2 startup pack, root router document, worker, tracked reflection kind, or `sync.md` contract in V3. The CLI is the entrypoint; the restored `reflector` writes only temporary promotion candidates.
 
 ## Install And Verify
 
@@ -196,6 +198,7 @@ Install from the repository root so the local `llmdoc` bin is linked before vali
 ├── .codex-plugin/          # generated from the Claude surface
 ├── agents/
 │   ├── investigator.md
+│   ├── reflector.md
 │   └── recorder.md
 ├── cli/
 ├── hooks/
@@ -213,6 +216,7 @@ Install from the repository root so the local `llmdoc` bin is linked before vali
 └── .llmdoc-tmp/
     ├── cache/
     ├── investigations/
+    ├── reflections/pending/
     └── records/
 ```
 
@@ -243,6 +247,13 @@ This project uses llmdoc V3 as persistent engineering context.
   Finalize doc changes with `commit`, which gates on validate and fingerprints
   in one step; otherwise go through `fingerprint` / `new` / `mv`. Scratch
   belongs in `.llmdoc-tmp/`.
+- Treat an explicit user correction, a verified approach failure, major rework,
+  or an instruction violation as a reflection signal when it exposes a reusable
+  lesson. Capture a privacy-safe candidate under
+  `.llmdoc-tmp/reflections/pending/`; never store the full transcript.
+- A pending reflection candidate is an update signal even with no code delta.
+  After user confirmation, run the update workflow with `--reflection`; verify
+  and merge the lesson into its existing architecture or guide owner.
 - After work that changes durable architecture, contracts, or workflows,
   suggest running the update workflow.
 ```

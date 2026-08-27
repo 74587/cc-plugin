@@ -43,8 +43,9 @@ V3 假定 CLI 始终存在。导航、检索、校验、delta 检测、hook 信�
   - `update`
   - `prune`
   - `upgrade`
-- 两个角色：
+- 三个角色：
   - `investigator`：把证据调查写入 `.llmdoc-tmp/investigations/`
+  - `reflector`：把强信号用户纠正和已验证错误写入 `.llmdoc-tmp/reflections/pending/`
   - `recorder`：唯一允许写入 tracked `llmdoc/` 知识和 `llmdoc/meta.json` 的角色
 
 Claude 是唯一手工维护的准源。Codex 插件表面由它通过 ACPlugin 转换生成。其他平台只需要一份精简 `AGENTS.md` 加 `npx @tokenroll/llmdoc`。
@@ -108,6 +109,7 @@ tracked 有效性记录在 `llmdoc/meta.json`：
 
 - assistant 应该在出现可持久化的新知识后建议执行，但必须先得到一次确认
 - 确认后，除非 scope 实质性扩张，否则流程可以完整跑完而不重复确认
+- `--reflection` 会消费强信号纠正或失败候选，即使代码 delta 为空也会触发更新判断
 - 命令会根据 CLI 信号选择最轻但足够的路径：
   - 影响明确时直接由 recorder 更新
   - 影响不清或涉及结构变化时走 investigator + recorder
@@ -147,7 +149,7 @@ tracked 有效性记录在 `llmdoc/meta.json`：
 3. 用 `npx @tokenroll/llmdoc context --files ...` 或 `npx @tokenroll/llmdoc search ...`
 4. 仅对真正需要的文档执行 `npx @tokenroll/llmdoc show ...`
 
-V3 不再保留 V2 的 startup pack、根路由文档、`worker`、`reflector` 或 `sync.md` 契约。CLI 本身就是入口。
+V3 不再保留 V2 的 startup pack、根路由文档、`worker`、tracked reflection kind 或 `sync.md` 契约。CLI 本身就是入口；恢复后的 `reflector` 只写临时晋升候选。
 
 ## 安装与验证
 
@@ -196,6 +198,7 @@ npm run check:prompts
 ├── .codex-plugin/          # 由 Claude 表面转换生成
 ├── agents/
 │   ├── investigator.md
+│   ├── reflector.md
 │   └── recorder.md
 ├── cli/
 ├── hooks/
@@ -213,6 +216,7 @@ npm run check:prompts
 └── .llmdoc-tmp/
     ├── cache/
     ├── investigations/
+    ├── reflections/pending/
     └── records/
 ```
 
@@ -240,6 +244,11 @@ Claude Code 与 Codex 用户由插件承担这一切（hooks、operating skill�
 - 稳定知识在 `llmdoc/`；不要手工编辑 `llmdoc/meta.json`。文档改动用 `commit`
   收尾——它内置 validate 门控并自动 fingerprint；其余台账变更走 `fingerprint` /
   `new` / `mv`。临时材料放 `.llmdoc-tmp/`。
+- 当用户明确纠正、验证证明方案错误、发生重大返工或违反项目指令，且其中
+  暴露出可复用经验时，将它视为反思强信号；只在
+  `.llmdoc-tmp/reflections/pending/` 保存隐私安全的候选，不保存完整对话。
+- pending 反思候选即使没有代码 delta 也会触发 update 判断。获得用户确认后，
+  用 `--reflection` 运行 update，验证并合并到既有 architecture 或 guide owner。
 - 完成改变架构、契约或工作流的任务后，建议执行 update 工作流。
 ```
 

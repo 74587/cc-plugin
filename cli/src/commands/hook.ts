@@ -46,11 +46,15 @@ function runSessionStart(cwd: string, stdin: string): string {
     const workspace = loadWorkspace(cwd);
     const delta = analyzeDelta(workspace);
     const signal = summarizeHookDelta(delta);
+    const pendingLessonCandidates = countPendingLessonCandidates(cwd);
     const parts = [`llmdoc ${lifecycle}`];
     // fingerprint/commit 正常收尾会让 HEAD 前进到仅修改 llmdoc/meta.json 的 follow-up commit。
     // 没有可执行影响时不展示 raw baseline 落后数，避免把知识面自身更新误报成需要再次 update。
     if (!signal.shouldUpdate) {
       parts.push("文档无待处理影响");
+      if (pendingLessonCandidates > 0) {
+        parts.push(`待处理反思候选 ${pendingLessonCandidates} 个`);
+      }
       return parts.join("; ");
     }
     const baseline = workspace.meta?.baseline.revision ? workspace.meta.baseline.revision.slice(0, 7) : "缺失";
@@ -64,6 +68,9 @@ function runSessionStart(cwd: string, stdin: string): string {
       .filter(Boolean)
       .join(", ");
     parts.push(`${summary} → 建议先看 npx @tokenroll/llmdoc delta`);
+    if (pendingLessonCandidates > 0) {
+      parts.push(`待处理反思候选 ${pendingLessonCandidates} 个`);
+    }
     return parts.join("; ");
   } catch {
     return `llmdoc ${lifecycle}; 状态读取失败,检索不受影响`;
@@ -75,20 +82,29 @@ function runStop(cwd: string): object {
     const workspace = loadWorkspace(cwd);
     const delta = analyzeDelta(workspace);
     const signal = summarizeHookDelta(delta);
-    if (!signal.shouldUpdate) {
+    const pendingLessonCandidates = countPendingLessonCandidates(cwd);
+    if (!signal.shouldUpdate && pendingLessonCandidates === 0) {
       return { continue: true };
     }
     const summary = [
       signal.impactedCount > 0 ? `${signal.impactedCount} 篇文档受代码变更影响` : null,
       signal.needsReviewCount > 0 ? `${signal.needsReviewCount} 篇文档需要复核` : null,
-      signal.unmappedCount > 0 ? `${signal.unmappedCount} 个代码路径未映射到任何文档` : null
+      signal.unmappedCount > 0 ? `${signal.unmappedCount} 个代码路径未映射到任何文档` : null,
+      pendingLessonCandidates > 0 ? `${pendingLessonCandidates} 个反思候选待处理` : null
     ]
       .filter(Boolean)
       .join(", ");
     const reasons = delta.reasons.length > 0 ? `信号: ${delta.reasons.join("; ")}` : "";
+    const updateCommand = pendingLessonCandidates > 0 ? "/llmdoc:update --reflection" : "/llmdoc:update";
+    const guidance =
+      pendingLessonCandidates > 0
+        ? signal.shouldUpdate
+          ? "workflow 会读取 pending 候选;代码影响面可先用 npx @tokenroll/llmdoc delta 查看"
+          : "workflow 会读取 pending 候选"
+        : "先用 npx @tokenroll/llmdoc delta 查看影响面";
     return {
       continue: true,
-      systemMessage: `llmdoc: ${summary},建议运行 /llmdoc:update(先用 npx @tokenroll/llmdoc delta 查看影响面)。${reasons}`
+      systemMessage: `llmdoc: ${summary},建议运行 ${updateCommand}(${guidance})。${reasons}`
     };
   } catch (error) {
     return {
@@ -119,8 +135,23 @@ function runCompact(): object {
   return {
     continue: true,
     systemMessage:
-      "即将 compact:请在 summary 中写入 LLMDOC_STATE(active goal、已读 llmdoc 文档、关键结论与不变量、用户决策、next step、open risks)。恢复后若该状态仍充分,直接继续,不要重放 tree/show。"
+      "即将 compact:请在 summary 中写入 LLMDOC_STATE(active goal、已读 llmdoc 文档、关键结论与不变量、用户决策、lesson_candidates、next step、open risks)。恢复后若该状态仍充分,直接继续,不要重放 tree/show。"
   };
+}
+
+function countPendingLessonCandidates(cwd: string): number {
+  const pendingDir = path.join(cwd, ".llmdoc-tmp", "reflections", "pending");
+  try {
+    return fs
+      .readdirSync(pendingDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".md")).length;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") {
+      return 0;
+    }
+    throw error;
+  }
 }
 
 function inferSource(stdin: string): "compact" | "cold" {
