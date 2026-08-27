@@ -1,5 +1,5 @@
 ---
-description: 渐进读取模型，以及结构改写和 commit 的安全、事务边界。
+description: 渐进读取、逐输入 source-owner 路由，以及结构改写和 commit 的安全事务边界。
 kind: reference
 relations:
   related:
@@ -38,7 +38,7 @@ code:
 
 ## 渐进读取模型
 
-读取面按“地图/索引或搜索/正文”逐层暴露，调用者在任一层都可以停止；这些命令返回受预算约束的公开投影，不泄漏内部解析对象。`context --files` 用 `code.paths` 反查 owner，并补齐 `relations.requires` 前置闭包。文本与 JSON 输出共用 schema 契约，避免不同宿主形成第二套语义。
+读取面按“地图/索引或搜索/正文”逐层暴露，调用者在任一层都可以停止；这些命令返回受预算约束的公开投影，不泄漏内部解析对象。`context --files` 对每个输入独立用 `code.paths` 反查 owner，再对 owner 并集补齐 `relations.requires` 前置闭包；未命中的输入通过 `unmappedFiles` 单独返回，不能被同批查询中的成功命中掩盖。文本与 JSON 输出共用 schema 契约，避免不同宿主形成第二套语义。
 
 Viewer 是同一知识面的只读本地投影，不是新的改写入口。服务命令只负责 loopback 生命周期与装配；HTTP 层只接受 GET/HEAD 和显式资产/API 路由，文档读取必须命中 workspace 扫描得到的 canonical ID，不能把请求路径解释成文件系统路径；状态层把 workspace、delta、validate 与 growth 投影为可序列化 DTO，并以 `requires > related > link` 的优先级确定同向关系，反向关系仍独立保留。
 

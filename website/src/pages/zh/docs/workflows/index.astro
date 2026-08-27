@@ -20,10 +20,12 @@ import DocsLayout from "../../../../layouts/DocsLayout.astro";
   </ol>
 
   <h2>初始化</h2>
-  <p>只有仓库不存在有效 V3 知识面时，才使用 <strong>init</strong>。它调查 topic 边界、写入少量高价值文档、完成校验，并以 Git 状态收尾。</p>
+  <p>只有仓库不存在有效 V3 知识面时，才使用 <strong>init</strong>。它设计 domain 与 topic 边界、写入最小充分的 owner 文档，并把每个 first-class 子系统归类为“已文档化”“有意由源码重建”或阻塞缺口。</p>
+  <p>结构校验通过后，init 还要验证自然语言概念查询、每个 implementation boundary 的代表文件、wildcard 负例与必读关系闭包，才能以 Git 状态收尾。</p>
 
   <h2>更新</h2>
   <p><strong>update</strong> 对照代码 delta 与已授权的 reflection candidate，语义复核现有知识。仍然正确的文档会被标记为 verified unchanged，不会累积变更日志。</p>
+  <p>正文与路由必须独立复核：正文仍然正确时，<code>description</code>、<code>code.paths</code> 或 relations 仍可能需要修复。</p>
   <div class="callout"><p>update 信号产生的是复核集合，不是正文写入列表。</p></div>
 
   <h2>收敛</h2>

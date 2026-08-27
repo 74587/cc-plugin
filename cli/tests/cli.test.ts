@@ -142,6 +142,79 @@ describe("llmdoc cli", () => {
     expect(invalid.stdout).toContain("路径必须是仓库内规范化相对路径");
   });
 
+  test("context reports mapped and unmapped inputs independently", async () => {
+    const rootDir = createFixture();
+
+    const mapped = await runCli(["--json", "context", "--files", "src/api/retry.ts"], rootDir);
+    expect(mapped.exitCode).toBe(0);
+    const mappedPayload = JSON.parse(mapped.stdout) as {
+      impacted: Array<{ path: string }>;
+      unmappedFiles: string[];
+    };
+    expect(mappedPayload.impacted.some((document) => document.path === "llmdoc/api-client/retry-policy.mdx")).toBe(true);
+    expect(mappedPayload.unmappedFiles).toEqual([]);
+
+    const unmapped = await runCli(["--json", "context", "--files", "src/api/new-feature.ts"], rootDir);
+    expect(unmapped.exitCode).toBe(0);
+    const unmappedPayload = JSON.parse(unmapped.stdout) as {
+      impacted: Array<{ path: string }>;
+      prerequisites: Array<{ path: string }>;
+      unmappedFiles: string[];
+    };
+    expect(unmappedPayload.impacted).toEqual([]);
+    expect(unmappedPayload.prerequisites).toEqual([]);
+    expect(unmappedPayload.unmappedFiles).toEqual(["src/api/new-feature.ts"]);
+
+    const mixedJson = await runCli(
+      [
+        "--json",
+        "context",
+        "--files",
+        "src/api/retry.ts",
+        "src/api/new-feature.ts",
+        "src/core/unmapped.ts"
+      ],
+      rootDir
+    );
+    expect(mixedJson.exitCode).toBe(0);
+    const mixedPayload = JSON.parse(mixedJson.stdout) as {
+      impacted: Array<{ path: string }>;
+      unmappedFiles: string[];
+    };
+    expect(mixedPayload.impacted.some((document) => document.path === "llmdoc/api-client/retry-policy.mdx")).toBe(
+      true
+    );
+    expect(mixedPayload.unmappedFiles).toEqual(["src/api/new-feature.ts", "src/core/unmapped.ts"]);
+
+    const mixed = await runCli(["context", "--files", "src/api/retry.ts", "src/api/new-feature.ts"], rootDir);
+    expect(mixed.exitCode).toBe(0);
+    expect(mixed.stdout).toContain("retry-policy.mdx");
+    expect(mixed.stdout).toContain("unmapped files: 1");
+    expect(mixed.stdout).toContain("unmapped -> src/api/new-feature.ts");
+  });
+
+  test("validate rejects a code.paths glob whose existing static prefix has zero file matches", async () => {
+    const rootDir = createFixture();
+    fs.writeFileSync(
+      path.join(rootDir, "llmdoc", "architecture.mdx"),
+      `---
+description: 整体架构与关键引导。
+kind: architecture
+code:
+  paths:
+    - src/api/*.tsx
+---
+
+# 整体架构
+`
+    );
+
+    const result = await runCli(["validate"], rootDir);
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain("code.paths.unmatched");
+    expect(result.stdout).toContain("src/api/*.tsx");
+  });
+
   test("metadata commands budget their projected output instead of full document bodies", async () => {
     const rootDir = createFixture();
     fs.appendFileSync(path.join(rootDir, "llmdoc", "api-client", "overview.mdx"), `\n${"large body ".repeat(4000)}`);

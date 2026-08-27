@@ -15,6 +15,15 @@ import DocsLayout from "../../../../layouts/DocsLayout.astro";
   <p>Context Floor 是 Agent 解决当前问题所需的上下文丰富度。工具调用数量、Token 占用和关键信息密度，共同决定到达这条线需要多久。</p>
   <p>llmdoc 在广泛探索源码前提高信息密度，但不替代源码。它收窄工作集后，原生工具继续核对实现文本、行号、测试与 Git 状态等实时事实。</p>
 
+  <h2>设计模型：语义路由图</h2>
+  <p>llmdoc 不是仓库的压缩副本，而是最小且连通的持久工程知识图：让 Agent 找到正确 owner，理解约束当前任务的设计决策，再进入权威源码核对实时事实。</p>
+  <ul>
+    <li><strong>决策优先于观察：</strong>文档保存理由、边界、不变量、契约、失败语义与高风险工作流；源码、测试、schema 和 manifest 保存实时事实。</li>
+    <li><strong>所有权优先于目录：</strong>知识跟随稳定职责与 review 边界，而不是机械映射 package 或文件夹。</li>
+    <li><strong>渐进披露：</strong>地图、路由元数据、选中正文与源码构成逐层加深的读取路径。</li>
+    <li><strong>复核耦合：</strong><code>code.paths</code> 把代码变化连到可能需要复核的文档，而不是制造文件覆盖率。</li>
+  </ul>
+
   <h2>渐进读取</h2>
   <p>检索面逐层披露：先给地图或元数据，再按搜索或源码所有权定位，最后读取选中的正文。调用者可以在任一层停止。</p>
   <pre><code>tree / index  →  search / context  →  show</code></pre>
@@ -34,6 +43,15 @@ import DocsLayout from "../../../../layouts/DocsLayout.astro";
 ├── api-client/
 │   └── retry-policy.mdx
 └── meta.json</code></pre>
+
+  <h2>从 domain 到 topic 再到 document</h2>
+  <p><strong>Domain</strong> 是分析边界：一组稳定职责、权威归属、不变量、失败模型和变更词汇。<strong>Topic</strong> 是它在 <code>llmdoc/</code> 下的持久检索邻域。<strong>Document</strong> 是一个完整问题、契约、不变量簇或工作流的 canonical owner。</p>
+  <p>Package 边界只是证据。所有权、失败语义或常见查询能够独立稳定时才拆 topic；跨 package 的代码若共同实现一个契约，则应归入同一语义域。根文档只承载真正跨 topic 的知识。</p>
+  <p><code>architecture</code> 用于边界、流程、设计因果与不变量；<code>guide</code> 用于带验证和恢复步骤的可重复工作流；<code>reference</code> 用于稳定契约、精确查表与决策矩阵。</p>
+
+  <h2>两道独立门</h2>
+  <p>Stable Knowledge Gate 决定哪些正文值得长期保存；Routing Gate 则检查自然语言概念查询和代表性决策源码能否到达正确 owner。正文精炼不能掩盖路由缺失，映射源码也不等于要在正文逐文件复述。</p>
+  <p><code>validate</code> 只检查结构。Context Floor 验收还要用自然语言 <code>search</code>、逐个入口与叶子文件的 <code>context --files</code>、宽 glob 的无关兄弟负例，以及必读关系做验证。每个 first-class 子系统都必须被归类为“已文档化”“有意由源码重建”，或作为阻塞缺口报告。</p>
 
   <h2>有效性以 Git 为基础</h2>
   <p><code>llmdoc/meta.json</code> 跟踪经过验证的 Git revision。工作树 dirty 是额外信号，不会被伪装成 revision。delta 命中意味着必须复核，并不自动意味着正文需要改写。</p>

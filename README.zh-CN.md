@@ -105,6 +105,9 @@ flowchart LR
 这些入口是备选关系，不是固定步骤。llmdoc 圈定工作集后，再使用原生工具核对
 源码原文、行号、测试行为、计数和 Git 状态。
 
+`context --files` 会逐个判断输入并报告 `unmappedFiles`；非空的 impacted
+结果不会再掩盖同批查询中未映射的其他路径。
+
 ```bash
 # 展开知识地图
 npx -y @tokenroll/llmdoc tree --docs

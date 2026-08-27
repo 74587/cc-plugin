@@ -43,19 +43,22 @@ This command does not authorize source-code edits.
    - Light: owners are mapped and facts are clear.
    - Deep: files are unmapped, owner/root cause is unclear, boundaries changed, facts conflict, or impact is broad.
    - This choice controls evidence gathering only. It does not decide whether prose must change.
+   - For unmapped or moved code and boundary changes, read [Knowledge Topology and Context Floor](../llmdoc/references/knowledge-topology.md) and classify each surface as missing mapping, missing owner, or intentional no-doc.
 
 4. Decide the semantic outcome with `recorder`.
    - Treat `delta` and candidates as review evidence, not a write list or prose to copy.
    - Rewrite only false/incomplete claims or new conclusions that pass the Stable Knowledge Gate. Reflection candidates must pass both gates.
+   - Gate prose and routing independently; true prose may still need routing metadata repair.
    - If the document remains true and the change adds only reconstructable evidence, mark it verified unchanged.
    - Light: `recorder` decides from targeted CLI reads. Deep: `investigator` reports evidence, then `recorder` applies the gate.
    - Scaffold brand-new docs with `new`; register docs that already exist as files with `adopt <path...>` — never hand-edit `meta.json` or recreate the file through `new`.
 
 5. Finalize.
+   - Run `validate`; after mapping or boundary changes, also run the reference's scoped routing acceptance.
    - If prose changed, run `commit -m "<message>"`, adding `--verified <path...>` for reviewed unchanged docs. If all stayed unchanged, run `commit --verified <path...>`. Full verification uses `--all`, never with `--verified`.
-   - `commit` gates on validate, commits any `llmdoc/` prose write-set, refreshes the changed and verified fingerprints, and lands `meta.json` separately. Never hand-roll this sequence out of `validate` plus `fingerprint`, and never `--amend` (that rewrites the hash fingerprints just recorded).
-   - `commit` preflights the fingerprint preconditions before creating any commit: if mapped source is still dirty it fails closed with the worktree untouched. Commit or clean the related source first, then rerun `commit` — do not fall back to a manual sequence.
-   - Re-check `status` when you need a final stale/clean signal. After a successful finalize, `N commits behind HEAD, metadata-only; knowledge clean` is the expected end state (the meta follow-up commit), not staleness — do not chase it with another update.
+   - `commit` validates, commits prose, refreshes fingerprints, and lands `meta.json` separately. Never reconstruct this sequence manually or `--amend` it.
+   - Dirty mapped source makes `commit` fail closed; commit or clean that source, then retry.
+   - After success, `N commits behind HEAD, metadata-only; knowledge clean` reflects the meta follow-up commit, not staleness.
 
 6. Fold durable lessons into stable docs directly.
    - Put reusable cautions, invariants, and workflow fixes into the relevant architecture or guide docs.
@@ -83,4 +86,5 @@ Always report:
 - any investigation report path
 - each reflection candidate and its disposition (`promoted`, `already_covered`, `dismissed`, or `pending`)
 - the stable docs changed and the docs verified unchanged by `recorder`
+- routing classifications and checks when topology changed
 - the `commit` result — validate gate, fingerprint refresh, and the meta follow-up commit — or why finalization was skipped

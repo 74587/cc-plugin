@@ -116,6 +116,9 @@ These are alternatives, not a fixed sequence. Once llmdoc narrows the working
 set, use native tools for exact source text, line numbers, test behavior,
 counts, and Git state.
 
+`context --files` evaluates every input independently and reports
+`unmappedFiles`; a non-empty impacted set never hides unmapped siblings.
+
 ```bash
 # Map the knowledge surface
 npx -y @tokenroll/llmdoc tree --docs

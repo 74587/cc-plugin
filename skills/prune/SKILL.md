@@ -34,6 +34,7 @@ This command does not authorize source-code edits.
    - A clean duplicate/fragment report does not prove good knowledge density; semantic review remains the recorder's job.
 
 2. Decide the convergence plan with `recorder`.
+   - If the plan moves ownership, changes topic boundaries, or merges/splits documents, read [Knowledge Topology and Context Floor](../llmdoc/references/knowledge-topology.md) before rewriting.
    - Merge duplicated docs.
    - Rewrite fragmented docs when a clearer topic boundary exists.
    - Apply the Stable Knowledge Gate sentence by sentence. Remove command/file inventories, current-state evidence, and other facts that a reader can cheaply recover from canonical sources.
@@ -43,6 +44,7 @@ This command does not authorize source-code edits.
 
 3. Re-validate the result.
    - Run `validate`.
+   - When ownership or routing changed, run the reference's scoped concept, per-file owner, broad-glob precision, and prerequisite checks; structural validation alone is insufficient.
    - Re-run `prune --report` and compare document/token scale with the first report.
    - Confirm surviving stable concepts retain accurate `code.paths`. Do not attach unrelated paths merely to preserve a coverage metric; call out any intentional coverage reduction.
    - Finalize with `commit -m "<message>"`, which fingerprints the surviving docs and lands the `meta.json` follow-up commit automatically.

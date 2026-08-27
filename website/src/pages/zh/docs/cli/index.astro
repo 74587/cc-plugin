@@ -16,7 +16,7 @@ import DocsLayout from "../../../../layouts/DocsLayout.astro";
     <div><dt><code>tree</code></dt><dd>根文档与 topic 的动态地图。</dd></div>
     <div><dt><code>index [--topic …] [--kind …]</code></dt><dd>用于发现文档的 front matter 投影。</dd></div>
     <div><dt><code>search &lt;query&gt;</code></dt><dd>在跟踪知识中执行词法搜索。</dd></div>
-    <div><dt><code>context --files &lt;src…&gt;</code></dt><dd>把源码路径映射到 owner 文档与依赖前置。</dd></div>
+    <div><dt><code>context --files &lt;src…&gt;</code></dt><dd>逐个把源码路径映射到 owner 文档与依赖前置，并明确报告未映射输入。</dd></div>
     <div><dt><code>show &lt;path…&gt;</code></dt><dd>读取选中的文档正文。</dd></div>
     <div><dt><code>serve</code></dt><dd>在 <code>127.0.0.1</code> 启动本地 Viewer，查看文档结构、关系与状态。</dd></div>
   </dl>
@@ -25,7 +25,7 @@ import DocsLayout from "../../../../layouts/DocsLayout.astro";
   <dl class="commands">
     <div><dt><code>status</code></dt><dd>有效性、baseline、dirty 与增长信号。</dd></div>
     <div><dt><code>delta</code></dt><dd>从代码变化计算受影响文档闭包。</dd></div>
-    <div><dt><code>validate</code></dt><dd>校验 schema、结构、关系、链接、代码路径与 ledger 一致性。</dd></div>
+    <div><dt><code>validate</code></dt><dd>校验 schema、结构、关系、链接、代码路径（含零命中 glob）与 ledger 一致性。</dd></div>
   </dl>
 
   <h2>安全改写</h2>

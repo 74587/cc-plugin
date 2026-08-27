@@ -1,5 +1,5 @@
 ---
-description: init/update 的授权边界、reflection 与稳定知识双门、light/deep 分流及 verified 收尾。
+description: init/update 的 domain-topic-owner 设计、Stable/Routing 双门、Context Floor 验收及 verified 收尾。
 kind: guide
 relations:
   related:
@@ -15,6 +15,8 @@ code:
     - cli/src/commands/status.ts
     - cli/src/commands/delta.ts
     - cli/src/commands/fingerprint.ts
+    - skills/llmdoc/references/knowledge-topology.md
+    - .agents/skills/llmdoc/references/knowledge-topology.md
 ---
 
 # Init 与 Update
@@ -23,7 +25,9 @@ code:
 
 两条工作流第一次正式写入前都要求 `llmdoc/` clean，写后必须 validate，失败且无法修复时回滚本次文档写集。它们只授权知识面与临时候选处理，不授权源码编辑。
 
-`init` 只用于没有有效 V3 知识面的仓库；已有 V3 转 update，legacy 结构只能走显式 upgrade。首次知识面先调查和确定 topic 边界，再由 `recorder` 写少量高价值核心文档，不追求源码全量转述。
+`init` 只用于没有有效 V3 知识面的仓库；已有 V3 转 update，legacy 结构只能走显式 upgrade。首次知识面先以稳定职责、authority、failure model 与查询词汇识别 domain，再把它们组织为持久 retrieval topic，最后由 `recorder` 为每个决策簇或风险工作流建立 canonical owner。Package 与目录只是边界证据；root singleton 只承载真正跨 topic 的契约。
+
+目标是最小充分 owner 集，不是源码全量转述或固定文档数量。每个 first-class 子系统都必须在 scratch domain/owner matrix 中归为 documented、intentionally reconstructable 或 gap；no-doc 决定需要可快速恢复的 canonical source 与无隐藏持久语义的证据，未决 gap 会阻止 init success。
 
 ## Update 是语义复核
 
@@ -35,6 +39,8 @@ code:
 reflection candidate 先验证 trigger、错误动作、根因、预防规则、scope 与置信度；用户纠正证明意图，不自动证明仓库事实。通过质量门后仍要经过 Stable Knowledge Gate：只有会改变未来选择、难以快速重建、足够持久且归属明确的规则才进入既有 architecture/guide。瞬时失败、单任务偏好和原始证据留在临时队列。
 
 代码 delta 同样只产生复核义务。原文失效或出现合格新结论才改写；原文仍成立时标记 verified unchanged，不追加本次 diff、路径库存或证据。
+
+Stable Knowledge Gate 与 Routing Gate 独立：前者决定正文是否值得持久化，后者决定概念和决策源码是否能到达正确 owner。`validate` 只关闭结构问题；init 必须在其后用自然语言 search、每个实现边界的逐文件 context probe、宽 glob 的无关 sibling 负例，以及 `tree --docs` 配合 `index`/context 的 requires 闭包完成 Context Floor 验收。Update 在 unmapped、移动或边界变化时先分类为 missing mapping、missing owner 或 intentional no-doc，再对受影响范围运行同样的路由检查。
 
 ## 收尾与 revision
 

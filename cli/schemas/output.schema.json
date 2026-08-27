@@ -425,6 +425,7 @@
       "required": [
         "impacted",
         "prerequisites",
+        "unmappedFiles",
         "pagination"
       ],
       "properties": {
@@ -438,6 +439,13 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/docRef"
+          }
+        },
+        "unmappedFiles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
           }
         },
         "pagination": {

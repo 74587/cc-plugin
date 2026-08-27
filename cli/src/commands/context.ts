@@ -28,11 +28,19 @@ export function runContext(options: ContextOptions): unknown {
       absolutePath
     };
   });
-  const impacted = workspace.documents.filter((document) =>
-    normalizedFiles.some((file) =>
+  const documentsByFile = normalizedFiles.map((file) => ({
+    file,
+    documents: workspace.documents.filter((document) =>
       (document.frontmatter.code?.paths ?? []).some((pattern) => matchesCodePathPattern(pattern, file.normalized))
     )
+  }));
+  const impactedPaths = new Set(
+    documentsByFile.flatMap(({ documents }) => documents.map((document) => document.llmdocPath))
   );
+  const impacted = workspace.documents.filter((document) => impactedPaths.has(document.llmdocPath));
+  const unmappedFiles = documentsByFile
+    .filter(({ documents }) => documents.length === 0)
+    .map(({ file }) => file.normalized);
 
   const prerequisites = collectRequires(workspace, impacted);
   const rows = [
@@ -49,6 +57,7 @@ export function runContext(options: ContextOptions): unknown {
     return {
       impacted: result.items.filter((row) => row.role === "impacted").map((row) => toPayload(row.document)),
       prerequisites: result.items.filter((row) => row.role === "requires").map((row) => toPayload(row.document)),
+      unmappedFiles,
       pagination: paginationMetadata(result)
     };
   }
@@ -59,6 +68,10 @@ export function runContext(options: ContextOptions): unknown {
     const document = row.document;
     lines.push(`${prefix} llmdoc/${document.llmdocPath}  [${document.frontmatter.kind}]`);
     lines.push(`    ${document.frontmatter.description}`);
+  }
+  lines.push("", `unmapped files: ${unmappedFiles.length}`);
+  for (const file of unmappedFiles) {
+    lines.push(`  unmapped -> ${file}`);
   }
   lines.push("", ...formatPaginationSummary(result));
   return lines.join("\n");

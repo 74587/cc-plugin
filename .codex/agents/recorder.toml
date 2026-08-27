@@ -19,17 +19,18 @@ When invoked:
    - current wording before a rewrite → `show <path...>`
    - convergence candidates when pruning → `prune --report`
 2. Read scoped investigator reports and declared `.llmdoc-tmp/reflections/pending/` candidates only when the task actually depends on them. Treat candidates as evidence to verify, never as prose to copy.
-3. Determine the impacted concepts, the correct topic boundaries, and whether durable knowledge actually changed. A changed source file or a `delta` hit creates a review obligation, not a documentation obligation.
+3. Determine the impacted concepts, the correct topic boundaries, and whether durable knowledge actually changed. A changed source file or a `delta` hit creates a review obligation, not a documentation obligation. Before initializing, creating/moving/splitting/merging a document or topic, repairing unmapped ownership, or auditing the Context Floor, read `knowledge-topology.md` from the installed llmdoc skill's `references/` directory.
 4. Apply the Stable Knowledge Gate before adding or retaining a claim. A stable claim should satisfy all of these tests:
    - **Decision effect:** reading it changes a future design, implementation, operation, or review choice.
    - **Recovery cost:** it cannot be reconstructed reliably in a few minutes from source, schema, CLI help, tests, or generated configuration.
    - **Durability:** it is expected to survive routine commits instead of describing one release or the current investigation.
    - **Canonical ownership:** it has one clear home and adds rationale, boundaries, consequences, or relationships beyond a source pointer.
    Transitional facts are allowed only when omitting them would cause unsafe behavior; state the condition that retires them.
-5. Write or rewrite only claims that pass the gate. Keep `code.paths`, relations, and a few canonical anchors as provenance and routing metadata; do not repeat their inventories in prose. Never hand-edit `llmdoc/meta.json`: every ledger change goes through the CLI (`new`, `adopt`, `mv`, `fingerprint`, `commit`), which keeps the format and revisions honest. When a valid `.mdx` already exists but is missing from the ledger, register it with `llmdoc adopt <path...>` instead of recreating it through `new`.
-6. Run `validate` and repair every failure it reports before declaring success.
-7. Leave finalization to the calling workflow, which runs `commit` — it gates on validate, commits the `llmdoc/` write-set, refreshes fingerprints, and lands the `meta.json` follow-up commit in one step. Docs reviewed but left unchanged are passed through `commit --verified <path...>`. Do not hand-roll that sequence out of `validate` plus `fingerprint`, and never `--amend` the meta change into it. Run `fingerprint --update` yourself only when the workflow explicitly asks for revised revisions without a commit.
-8. Report created, updated, deleted, and verified-unchanged documents separately.
+5. Apply the Routing Gate independently. `code.paths` is semantic ownership, not prose inventory or a coverage score. Every first-class decision-bearing surface needs a route to its canonical owner; every mapped file should be relevant enough that changing it creates a real review obligation. A mapping change may be required even when stable prose remains true.
+6. Write or rewrite only claims that pass the Stable Knowledge Gate. Keep `code.paths`, relations, and a few canonical anchors as routing and provenance metadata; do not repeat their inventories in prose. Never hand-edit `llmdoc/meta.json`: every ledger change goes through the CLI (`new`, `adopt`, `mv`, `fingerprint`, `commit`), which keeps the format and revisions honest. When a valid `.mdx` already exists but is missing from the ledger, register it with `llmdoc adopt <path...>` instead of recreating it through `new`.
+7. Run `validate` and repair every failure it reports. Treat it as structural only. When topology or mappings changed, also run scoped concept, per-file owner, broad-glob precision, and prerequisite checks from the knowledge-topology reference before declaring success.
+8. Leave finalization to the calling workflow, which runs `commit` — it gates on validate, commits the `llmdoc/` write-set, refreshes fingerprints, and lands the `meta.json` follow-up commit in one step. Docs reviewed but left unchanged are passed through `commit --verified <path...>`. Do not hand-roll that sequence out of `validate` plus `fingerprint`, and never `--amend` the meta change into it. Run `fingerprint --update` yourself only when the workflow explicitly asks for revised revisions without a commit.
+9. Report created, updated, deleted, and verified-unchanged documents separately, plus missing-mapping, missing-owner, intentional no-doc, and routing-check outcomes when relevant.
 
 Consistency rules:
 
@@ -53,10 +54,14 @@ V3 document model:
 
 Routing tests:
 
-- Topic purpose and boundary belong in the topic's `architecture` doc when they need prose; otherwise rely on document descriptions.
+- Domain is an analysis boundary; topic is a durable retrieval boundary. Package and directory layouts are evidence, not automatic topics.
+- Topic purpose and boundary belong in the topic's `architecture` doc when they need durable prose; otherwise rely on document descriptions.
 - Use `kind=architecture` for flows, ownership boundaries, invariants, and why the implementation is shaped that way.
 - Use `kind=reference` for stable lookup facts and contracts.
 - Use `kind=guide` for repeatable workflows.
+- A `description` is a retrieval promise: name the distinctive responsibility, contract terms, and questions the document answers.
+- A broad `code.paths` glob is valid only when an unrelated sibling cannot spuriously route to the document. Test representative owner files one at a time with `context --files` so a successful match cannot hide an unmapped input.
+- `requires` means mandatory prior reading; `related` means a useful neighbor. Relations do not repair missing source routes.
 - Leave raw investigation, volatile observations, and one-off evidence in `.llmdoc-tmp/`.
 
 Split rules:
@@ -64,7 +69,7 @@ Split rules:
 - One concept per document.
 - One workflow per guide.
 - One ownership boundary or invariant cluster per architecture doc.
-- During init, depth beats premature fragmentation. Prefer a small set of strong core docs before broad expansion.
+- During init, depth beats premature fragmentation, but never missing ownership. Prefer the smallest sufficient set of strong owner docs; classify every first-class subsystem as documented, intentionally reconstructable, or a blocking gap.
 - If a document grows large only because it is preserving one coherent execution model, invariant set, or contract cluster, keep it intact until a clean split is obvious.
 - If a document exceeds roughly 150 lines (the `validate` warning limit), covers more than one workflow, or mixes stable facts with transient notes, split it when doing so improves retrieval without discarding essential reasoning flow.
 - Keep `code.paths` and `relations` accurate when merging, splitting, or deleting docs.
