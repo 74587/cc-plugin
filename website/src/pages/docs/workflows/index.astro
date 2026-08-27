@@ -19,10 +19,12 @@ import DocsLayout from "../../../layouts/DocsLayout.astro";
   </ol>
 
   <h2>Initialize</h2>
-  <p>Use the <strong>init</strong> workflow only when a repository has no valid V3 knowledge surface. It investigates topic boundaries, writes a small number of high-value documents, validates them, and finishes with Git-backed state.</p>
+  <p>Use the <strong>init</strong> workflow only when a repository has no valid V3 knowledge surface. It designs domain and topic boundaries, writes the smallest sufficient set of owner documents, and classifies every first-class subsystem as documented, intentionally reconstructable, or a blocking gap.</p>
+  <p>After structural validation, init verifies natural concept queries, representative files from every implementation boundary, wildcard negative probes, and prerequisite closure before it can finish with Git-backed state.</p>
 
   <h2>Update</h2>
   <p><strong>Update</strong> semantically verifies existing knowledge against code deltas and authorized reflection candidates. A document that is still correct is verified unchanged; it does not accumulate a change log.</p>
+  <p>Prose and routing are reviewed independently: true prose may still need <code>description</code>, <code>code.paths</code>, or relations repaired.</p>
   <div class="callout"><p>An update signal is a review set, not a prose-writing list.</p></div>
 
   <h2>Prune</h2>

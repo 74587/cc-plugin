@@ -164,6 +164,50 @@ for (const name of ["llmdoc", "init", "update", "prune", "upgrade"]) {
   }
 }
 
+// Skill references are part of the executable prompt surface too. A mirrored SKILL.md
+// is not sufficient when its conditionally loaded guidance is missing or stale.
+for (const rel of ["llmdoc/references/knowledge-topology.md"]) {
+  const claudePath = `skills/${rel}`;
+  const codexPath = `.agents/skills/${rel}`;
+  const claudeReference = readText(claudePath);
+  const codexReference = readText(codexPath);
+  if (
+    claudeReference !== null &&
+    codexReference !== null &&
+    normalizeBody(claudeReference) !== normalizeBody(codexReference)
+  ) {
+    errors.push(`${codexPath}: reference 与 canonical ${claudePath} 不一致`);
+  }
+}
+
+for (const rel of [
+  "skills/init/SKILL.md",
+  ".agents/skills/init/SKILL.md",
+  "skills/update/SKILL.md",
+  ".agents/skills/update/SKILL.md",
+  "skills/prune/SKILL.md",
+  ".agents/skills/prune/SKILL.md"
+]) {
+  const content = readText(rel);
+  if (content !== null && !content.includes("../llmdoc/references/knowledge-topology.md")) {
+    errors.push(`${rel}: 未按需路由到 knowledge-topology reference`);
+  }
+}
+
+for (const rel of ["skills/llmdoc/SKILL.md", ".agents/skills/llmdoc/SKILL.md"]) {
+  const content = readText(rel);
+  if (content !== null && !content.includes("references/knowledge-topology.md")) {
+    errors.push(`${rel}: operating skill 未暴露 knowledge-topology reference`);
+  }
+}
+
+for (const rel of ["agents/recorder.md", ".codex/agents/recorder.toml"]) {
+  const content = readText(rel);
+  if (content !== null && !content.includes("knowledge-topology.md")) {
+    errors.push(`${rel}: Recorder 未声明 knowledge-topology 加载条件`);
+  }
+}
+
 for (const name of ["investigator", "reflector", "recorder"]) {
   const claudePath = `agents/${name}.md`;
   const codexPath = `.codex/agents/${name}.toml`;

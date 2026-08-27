@@ -14,6 +14,15 @@ import DocsLayout from "../../../layouts/DocsLayout.astro";
   <p>The Context Floor is the richness of context an agent needs to solve the current problem. Tool calls, token footprint, and the density of key information all shape the time it takes to reach that floor.</p>
   <p>llmdoc raises information density before broad source exploration. It does not replace source code: once it narrows the working set, native tools verify live details such as implementation text, line numbers, tests, and Git state.</p>
 
+  <h2>Design model: a semantic routing graph</h2>
+  <p>llmdoc is not a compressed copy of the repository. It is the smallest connected graph of durable engineering meaning that lets an agent find the right owner, understand the decisions that constrain a task, and then continue into authoritative source.</p>
+  <ul>
+    <li><strong>Decisions over observations:</strong> documents preserve rationale, boundaries, invariants, contracts, failure semantics, and risky workflows; source, tests, schemas, and manifests retain live facts.</li>
+    <li><strong>Ownership over layout:</strong> knowledge follows stable responsibility and review boundaries, not package or directory shape.</li>
+    <li><strong>Progressive disclosure:</strong> the map, routing metadata, selected bodies, and source form successively deeper layers.</li>
+    <li><strong>Review coupling:</strong> <code>code.paths</code> maps a change to the documents whose claims may need review, rather than manufacturing a file-coverage score.</li>
+  </ul>
+
   <h2>Progressive reading</h2>
   <p>The retrieval surface reveals knowledge in layers: map or metadata first, then search or source ownership, then selected bodies. A caller may stop at any layer.</p>
   <pre><code>tree / index  →  search / context  →  show</code></pre>
@@ -33,6 +42,15 @@ import DocsLayout from "../../../layouts/DocsLayout.astro";
 ├── api-client/
 │   └── retry-policy.mdx
 └── meta.json</code></pre>
+
+  <h2>From domain to topic to document</h2>
+  <p>A <strong>domain</strong> is an analysis boundary: one stable responsibility, authority, invariant set, failure model, and change vocabulary. A <strong>topic</strong> is its persistent retrieval neighborhood under <code>llmdoc/</code>. A <strong>document</strong> is the canonical owner of one coherent question, contract, invariant cluster, or workflow.</p>
+  <p>Package boundaries are only evidence. Split a topic when ownership, failure semantics, or common queries are independently stable; join code from different packages when it implements one contract. Reserve root documents for genuinely cross-topic knowledge.</p>
+  <p>Use <code>architecture</code> for boundaries, flows, rationale, and invariants; <code>guide</code> for repeatable workflows with verification and recovery; and <code>reference</code> for stable lookup contracts and decision tables.</p>
+
+  <h2>Two gates, not one</h2>
+  <p>The Stable Knowledge Gate controls what prose deserves to persist. A separate Routing Gate checks whether natural concept queries and representative decision-bearing files reach the correct owner. Concise prose does not excuse a missing route, and mapping a file does not require narrating it.</p>
+  <p><code>validate</code> checks structure. Context Floor acceptance additionally probes natural-language <code>search</code>, individual entry and leaf files with <code>context --files</code>, unrelated siblings against broad globs, and mandatory prerequisite relations. Every first-class subsystem must be documented, intentionally reconstructable, or reported as a blocking gap.</p>
 
   <h2>Validity is Git-based</h2>
   <p><code>llmdoc/meta.json</code> tracks validated Git revisions. Dirty worktree state is an additional signal, never a fabricated revision. A delta hit creates a review obligation; it does not automatically require a prose change.</p>

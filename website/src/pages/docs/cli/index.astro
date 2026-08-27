@@ -15,7 +15,7 @@ import DocsLayout from "../../../layouts/DocsLayout.astro";
     <div><dt><code>tree</code></dt><dd>Dynamic map of root documents and topics.</dd></div>
     <div><dt><code>index [--topic …] [--kind …]</code></dt><dd>Front-matter projection for document discovery.</dd></div>
     <div><dt><code>search &lt;query&gt;</code></dt><dd>Lexical search across tracked knowledge.</dd></div>
-    <div><dt><code>context --files &lt;src…&gt;</code></dt><dd>Map source paths to owner documents and required prerequisites.</dd></div>
+    <div><dt><code>context --files &lt;src…&gt;</code></dt><dd>Map each source path to owner documents and required prerequisites, while reporting unmapped inputs explicitly.</dd></div>
     <div><dt><code>show &lt;path…&gt;</code></dt><dd>Read selected document bodies.</dd></div>
     <div><dt><code>serve</code></dt><dd>Start the local Viewer on <code>127.0.0.1</code> to inspect document structure, relations, and status.</dd></div>
   </dl>
@@ -24,7 +24,7 @@ import DocsLayout from "../../../layouts/DocsLayout.astro";
   <dl class="commands">
     <div><dt><code>status</code></dt><dd>Validity, baseline, dirty, and growth signals.</dd></div>
     <div><dt><code>delta</code></dt><dd>Changed code to impacted-document closure.</dd></div>
-    <div><dt><code>validate</code></dt><dd>Schema, structure, relations, links, code paths, and ledger consistency.</dd></div>
+    <div><dt><code>validate</code></dt><dd>Schema, structure, relations, links, code paths—including zero-match globs—and ledger consistency.</dd></div>
   </dl>
 
   <h2>Mutate safely</h2>

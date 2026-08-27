@@ -9,6 +9,7 @@ import { estimateTokens, extractCodeRefs, extractLinks, extractTitle, resolveDoc
 import { assertDocKindMatchesShape, parseDocTargetShape } from "./doc-shape.js";
 import { normalizeRepoRelativePath, repoPath, resolveInsideRoot } from "./fs.js";
 import { gitCommitExists, isShallowRepository } from "./git.js";
+import { matchesCodePathPattern } from "./search.js";
 import { validateDocFrontmatter, validateMeta } from "./schema.js";
 
 export function loadWorkspace(rootDir: string): WorkspaceData {
@@ -313,6 +314,16 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
           path: document.repoPath,
           message: `code.paths 指向不存在的路径: ${codePath}`
         });
+      } else if (
+        normalized.isGlob &&
+        !globMatchesExistingFile(workspace.rootDir, normalized.absolutePath, normalized.normalized)
+      ) {
+        issues.push({
+          severity: "error",
+          code: "code.paths.unmatched",
+          path: document.repoPath,
+          message: `code.paths glob 未命中任何现有文件: ${codePath}`
+        });
       }
     }
 
@@ -463,4 +474,37 @@ function validateCodePathPattern(
   } catch (error) {
     return { ok: false, message: (error as Error).message };
   }
+}
+
+function globMatchesExistingFile(rootDir: string, staticPrefixPath: string, pattern: string): boolean {
+  const pending = [staticPrefixPath];
+
+  while (pending.length > 0) {
+    const currentPath = pending.pop()!;
+    const stat = fs.lstatSync(currentPath);
+    if (stat.isSymbolicLink()) {
+      continue;
+    }
+    if (stat.isFile()) {
+      if (matchesCodePathPattern(pattern, repoPath(rootDir, currentPath))) {
+        return true;
+      }
+      continue;
+    }
+    if (!stat.isDirectory()) {
+      continue;
+    }
+
+    for (const entry of fs.readdirSync(currentPath, { withFileTypes: true })) {
+      if (entry.isSymbolicLink()) {
+        continue;
+      }
+      if (entry.isDirectory() && [".git", ".llmdoc-tmp", "node_modules"].includes(entry.name)) {
+        continue;
+      }
+      pending.push(path.join(currentPath, entry.name));
+    }
+  }
+
+  return false;
 }

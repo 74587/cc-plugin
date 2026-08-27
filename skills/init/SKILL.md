@@ -31,18 +31,21 @@ Stop instead of improvising when:
 ## Workflow
 
 1. Inventory the repository surface.
+   - Before choosing boundaries, read [Knowledge Topology and Context Floor](../llmdoc/references/knowledge-topology.md). Use its domain/topic tests and Context Floor acceptance contract.
    - Read top-level manifests, README files, entrypoints, test surfaces, and release/config files.
    - Use one or more `investigator` subagents for complementary evidence scopes when the repository is large enough to benefit; keep their write ownership in `.llmdoc-tmp/`.
-   - Check coverage and resolve conflicting evidence before handing the result to `recorder`.
+   - Build the reference's scratch domain/owner matrix. Give every first-class subsystem an expected owner document or an explicit no-doc reason; resolve conflicting evidence before handing the result to `recorder`.
 
 2. Build the first V3 knowledge surface with `recorder`.
    - Define topic boundaries before drafting leaf docs.
-   - Prefer a small number of high-value docs over broad shallow coverage.
+   - Prefer the smallest sufficient set of high-value owner docs over broad shallow inventory. Depth never excuses a first-class subsystem with neither an owner nor an intentional no-doc decision.
    - Keep stable knowledge in `llmdoc/` and validity state in `llmdoc/meta.json`.
-   - Create the V3 root singleton plus one-level topic directories; topics are plain directories with no `index.mdx` entry node.
+   - Create root singleton docs only for genuinely cross-topic contracts; otherwise create only the necessary one-level topic directories. Topics are plain directories with no `index.mdx` entry node.
 
 3. Validate before reporting success.
    - Seed the ledger with `init-state` (writes meta.json with null revisions), then run `validate` and fix all schema, routing, and reference failures.
+   - Treat `validate` as structural only. After it passes, run the reference's Context Floor acceptance: natural-query searches, per-boundary `context --files` probes, broad-glob precision probes, and `tree --docs` plus `index`/`context` relation review.
+   - Repair missing or imprecise routes before success. An intended owner must be reached directly; a generic root document alone is not sufficient.
    - Docs added after `init-state` already seeded the ledger get their entries via `adopt <path...>`; never hand-edit `meta.json` or recreate existing files through `new`.
    - Finalize with `commit --all -m "docs: bootstrap llmdoc"` — it commits the surface, brands fingerprints, and lands the meta follow-up commit in one step.
    - On a validation failure that cannot be repaired in-run, roll back the init write-set.
@@ -66,5 +69,6 @@ Always report:
 - whether init ran or was refused
 - the investigation report path or paths used
 - the topics and stable docs created
+- the domain/owner matrix outcome, including concept routes, representative file routes, and intentional no-doc decisions
 - the `validate` and `commit` results
-- any material gaps left for later `/llmdoc:update`
+- any intentionally reconstructable areas or non-blocking follow-ups; an unresolved first-class gap makes init `incomplete`, not `success`

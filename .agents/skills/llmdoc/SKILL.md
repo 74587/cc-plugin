@@ -50,6 +50,7 @@ These entry points are alternatives, not a sequence. Stop as soon as the task ha
 - Before non-trivial edits, align with the user.
 - If `llmdoc/` does not exist, suggest `/llmdoc:init`; do not fabricate the knowledge surface ad hoc.
 - When a task produces durable knowledge changes, suggest `/llmdoc:update` at the end.
+- For topology or routing work, read [Knowledge Topology](references/knowledge-topology.md).
 - Never suggest `/llmdoc:upgrade`; it runs only when the user asks for it by name.
 
 ## Reflection Gate

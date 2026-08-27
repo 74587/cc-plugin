@@ -20,7 +20,7 @@ CLI 是 V3 的 Runtime 实体:所有确定性、可测试、重复出现的工�
 | `llmdoc index [--topic t] [--kind k]` | 批量输出文档 front matter 投影(path/description/kind/relations/code.paths)。L2 |
 | `llmdoc show <path...>` | 按路径取正文,多文档合并输出,带预算。L3 |
 | `llmdoc search <query> [--topic] [--kind]` | 词法检索(front matter + 标题 + 正文,BM25 级),返回 path + description + 命中片段 |
-| `llmdoc context --files <src...>` | **给 AI 的核心入口**:"我要改这些源码文件,应该先读哪些文档"——用 `code.paths` 反查 + requires 闭包 |
+| `llmdoc context --files <src...>` | **给 AI 的核心入口**:"我要改这些源码文件,应该先读哪些文档"——逐输入用 `code.paths` 反查 + requires 闭包,并独立报告 `unmappedFiles` |
 
 搜索索引缓存于 `.llmdoc-tmp/cache/`,按 mtime/revision 增量重建,删除可再生。不做 embedding。
 
@@ -32,7 +32,7 @@ CLI 是 V3 的 Runtime 实体:所有确定性、可测试、重复出现的工�
 |---|---|
 | `llmdoc status` | baseline vs HEAD、失效/待复核文档数、dirty 信号、growth 概况。hook 与人共用 |
 | `llmdoc delta [--scope <topic\|path...>]` | 变更代码 → 受影响文档闭包 + unmapped paths + light/deep 建议信号(见 04) |
-| `llmdoc validate` | 全量校验:front matter schema、kind 合法、禁 index.mdx、层级深度(禁嵌套)、链接/requires 悬空、CodeRef path 存在、ledger 与文件树一致、体积告警。CI 与写入门控共用 |
+| `llmdoc validate` | 全量校验:front matter schema、kind 合法、禁 index.mdx、层级深度(禁嵌套)、链接/requires 悬空、CodeRef path 存在、`code.paths` 精确路径存在且 glob 至少命中一项、ledger 与文件树一致、体积告警。CI 与写入门控共用 |
 | `llmdoc fingerprint --update <path...|--all>` | 只刷新 revision 的低层台账原语;普通 update 收尾优先用 `commit`/`commit --verified` 保证 validate 与 git 提交闭环 |
 | `llmdoc init-state` | 首次生成 `meta.json` 台账骨架:全部文档 `validatedRevision: null` + 实测 convergence;init/upgrade 场景专用,拒绝覆盖已有台账 |
 | `llmdoc commit [-m] [--verified <path...> \| --all] [--no-verify]` | **一体化收尾**:validate 门控 → 可选提交正文写集(不卷入用户 staged 的其他文件)→ 刷新正文改动与 verified-unchanged 文档 → meta 单独小 commit。`--all` 表示全量复核且不能与 `--verified` 同用;无正文改动时可只提交 meta。消灭手工三步曲与 `--amend` 追尾陷阱 |

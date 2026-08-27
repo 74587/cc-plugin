@@ -39,6 +39,8 @@ This project uses llmdoc V3 as persistent engineering context.
   - bodies of documents already identified → `show <path...>`
 - These entry points are alternatives, not a fixed sequence. Stop when the task
   has enough context.
+- `context --files` evaluates inputs independently and reports `unmappedFiles`;
+  do not infer that all inputs are mapped merely because `impacted` is non-empty.
 - Broad native discovery means recursive or cross-directory exploration outside
   the working set identified by llmdoc. After llmdoc narrows that set, use
   native tools for exact source text, line numbers, test behavior, counts, Git
