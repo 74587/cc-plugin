@@ -1,5 +1,5 @@
 ---
-description: Workspace 扫描、revision/delta、schema 校验与 hook 信号。文档 ID 即 llmdoc/ 下相对路径，topic 名即第一层目录名。
+description: Workspace 边界、revision 有效性、delta 影响扩展与 hook 信号契约。
 kind: architecture
 code:
   paths:
@@ -22,70 +22,20 @@ code:
 
 # 状态面与校验面
 
-## 项目根发现边界
+## Workspace 与文档模型
 
-`cli/src/lib/fs.ts` 只接受离当前目录最近的 Git 根直属的 `llmdoc/`；存在 Git 边界时不再向上查找，避免把同一工作区中名为 `llmdoc` 的同级仓库误认成当前项目的知识面。仅在完全没有 Git 边界时，才为初始化前的临时目录保留向上查找 `llmdoc/` 的兼容回退。
+CLI 只接受最近 Git 根直属的 `llmdoc/`，避免跨仓库误认；没有 Git 边界时才保留初始化场景的向上兼容查找。V3 文档树固定为根 singleton 加一层 topic，路径即文档 ID；不设 `index.mdx`，topic 摘要由 CLI 聚合。`meta.json` 只保存有效性台账，不复制可扫描的树结构。
 
-## 文档树如何被装载
+`validate` 的责任是保证 schema、两层结构、引用、代码锚点、realpath 边界与 ledger/文件树一致。精确字段集合属于 schema，不在稳定正文重复维护。
 
-`cli/src/lib/workspace.ts` 会递归扫描 `llmdoc/`，只接受 `.mdx` 与唯一的 `meta.json`。每份文档会被解析出 front matter、标题、正文链接、`CodeRef` 与 topic 归属。
+## Revision 与影响语义
 
-- 根：`llmdoc/*.mdx`
-- topic：`llmdoc/topic-name/*.mdx`
+每篇文档以自己的 `validatedRevision` 为首选锚点，缺失时才回落到 baseline。revision 必须是真实 git commit；worktree 的 staged、unstaged、untracked 变化只产生 dirty 信号，绝不伪造“工作树 revision”。缺失、不可达的 revision 会保守地触发 deep review。
 
-任何位置的 `index.mdx` 都被显式禁止（V3 不设入口节点，topic 描述由 `tree` 从文档聚合），topic 下继续嵌套子目录也会报错。
+`delta` 先用 `code.paths` 找直接受影响文档，再沿 `relations.requires` 反向扩展一跳为 needs-review。未映射路径、反向复核、影响过广、dirty 关联代码或失效 revision 会把建议模式抬到 deep。命中表示必须复核，不表示正文必须变化。
 
-## validate 保证什么
+revision 推进前必须确认 git 可推进且目标文档关联实现无 dirty；全量推进还要求所有实现表面 clean。`commit --verified` 让语义仍成立的文档只刷新有效性锚点。fingerprint 之后由 CLI 自己创建的纯 `llmdoc/meta.json` follow-up 不代表知识再次过期，重复收尾应成为 no-op。
 
-`validate` 会检查：
+## Hook 信号边界
 
-- front matter 只能出现 `description`、`kind`、`relations`、`code.paths`
-- `kind` 只允许 `architecture`、`guide`、`reference`
-- 任何位置不允许 `index.mdx` 文件名
-- 正文只能是纯 Markdown，加自闭合 `<CodeRef ... />`
-- `relations` 与正文 Markdown 链接都必须指向现存 `.mdx`
-- `code.paths` 与 `CodeRef path` 必须留在仓库内，且非 glob 路径必须存在
-- `baseline.verifiedAt` 与 `convergence.capturedAt` 必须是合法 UTC 日历时间，而不只是形似 RFC3339 的字符串
-- `meta.json` 的 baseline 与 per-document `validatedRevision` 必须都是真实 commit
-- `meta.json.documents` 与当前文件树必须一一对应
-
-unmapped/dirty 信号会排除 lockfile、git 元文件与仓库根可选 `.llmdocignore`（每行一个 minimatch pattern，`#` 注释，`dir/` 自动展开为 `dir/**`）匹配的路径；validate 对正文中的 `[[wikilink]]` 语法输出 warning（llmdoc 不解析它）。
-
-`meta.json` 只保存 revision 台账，不复制树结构。装载前还会做 `llmdoc/` 根 realpath 边界检查；若符号链接逃逸到仓库外，CLI 会直接拒绝。
-
-## revision 与 delta 语义
-
-`cli/src/lib/state.ts` 以 git 为唯一锚点：
-
-- 每个文档优先用自己的 `validatedRevision`
-- 没有 per-document 记录时回落到 `baseline.revision`
-- `status` 通过 `git rev-list --count baseline..HEAD` 计算 baseline 落后多少 commit；除原始 `commitsBehindHead` 外还输出 `relevantCommitsBehindHead`（baseline..HEAD 中至少触碰一个 implementation surface 路径的提交数，按 `.llmdocignore` 与 llmdoc 内部路径排除规则计算）。当落后提交全部只改 `llmdoc/**`（典型为 commit 收尾的 meta follow-up）时，text 输出标注 `metadata-only; knowledge clean`，避免成功收尾后被误判为知识过期
-- `delta` 通过 `git diff --name-only validatedRevision..HEAD` 找到命中的 `code.paths`
-
-dirty worktree 不会伪造 revision。`staged`、`unstaged`、`untracked` 只会变成 dirty 信号，只针对 `llmdoc/` 之外的实现文件。若文档缺少 `validatedRevision`，或该 revision 已不在当前历史，CLI 会保守地把它记为 impacted，并把建议模式抬到 `deep`。
-
-## 影响面扩展
-
-直接命中 `code.paths` 的文档会被记为 impacted。之后只沿 `relations.requires` 反向扩展一跳，把依赖这些文档的页面标成 needs-review。
-
-若存在未映射代码路径、requires 反向需复核、受影响文档过多、dirty 关联代码、缺失/无效的 `validatedRevision`，或 baseline 失效，`delta` 会把建议模式抬到 `deep`。
-
-## fingerprint 与 hook
-
-`fingerprint --update` 会把目标文档的 `validatedRevision` 写成当前 HEAD；`--all` 还会同步推进 `baseline.revision` 和 `baseline.verifiedAt`。它会拒绝三类情况：
-
-- 非 git 或无法解析 HEAD
-- detached HEAD 或 merge/rebase/cherry-pick 中
-- 目标文档关联的实现代码仍然 dirty
-
-其中 `--all` 更严格：只要任意实现路径仍 dirty，就会拒绝推进 baseline，不要求那条路径先映射到某篇文档。
-
-公开 `--json` 输出会先按 `cli/schemas/output.schema.json` 过 Ajv 2020 校验；`hook stop` 与 `hook compact` 还会先解析并校验 hook payload。三类 hook 都是只读信号：
-
-- 代码更新信号仍只取决于过滤后的 `impacts`、`needsReview` 和未映射的 committed/dirty 实现路径；`llmdoc/**`、`.llmdoc-tmp/**` 与 `.llmdocignore` 已排除路径不会进入 delta 信号
-- hook 另行计数 `.llmdoc-tmp/reflections/pending/` 直属的 Markdown 候选；`session-start` 即使没有代码影响也会报告候选数，`stop` 则会建议 `/llmdoc:update --reflection`
-- `session-start` 没有代码影响时不报告原始 baseline 落后数；`stop` 只有在代码影响和 pending 候选都不存在时才不附带 `systemMessage`
-- `compact` 要求把 `lesson_candidates` 连同 active goal、已读文档、关键结论和下一步写入 `LLMDOC_STATE`，供 compact re-entry 延续，而不复制对话 transcript
-- 任何异常都 fail-open，不阻塞开发
-
-因此，只修改 llmdoc 的提交以及 fingerprint 收尾的 `llmdoc/meta.json` follow-up 即使使 HEAD 前进，也保持 knowledge clean：在没有 pending candidate 时，`session-start` 不会把它误报为需要更新，`stop` 保持静默。
+hook 只读且 fail-open。代码更新信号来自过滤后的 impact/unmapped 路径；`llmdoc/**`、临时目录和 ignore 命中项不制造代码陈旧。pending reflection 候选另行计数，即使没有代码 delta 也能提示 reflection update。compact 只延续候选标识和必要 `LLMDOC_STATE`，不复制 transcript。

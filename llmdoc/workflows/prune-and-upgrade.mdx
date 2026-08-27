@@ -1,5 +1,5 @@
 ---
-description: prune 与 upgrade 的当前真实能力边界：命令文档已经定义完整授权，但 CLI 仍以报告和诊断为主，真正的收敛与迁移需要 recorder 跟进。
+description: prune 的语义密度收敛与 upgrade 的显式迁移、安全收尾边界。
 kind: guide
 relations:
   related:
@@ -14,28 +14,16 @@ code:
 
 # Prune 与 Upgrade
 
-## prune 的当前状态
+## Prune 收敛知识价值
 
-命令文档已经把 `prune` 定义成显式 convergence pass，并允许改写、合并或删除 `llmdoc/`。但当前 CLI 只支持 `npx -y @tokenroll/llmdoc prune --report`：输出 growth 概况、duplicate candidates 与同 topic 小文档 merge candidates，返回只读 `dry_run` 语义，不自动改写或删除任何文档。
+CLI 的 `prune --report` 只提供规模、重复和碎片等机械信号；没有候选不代表正文知识密度合格。`recorder` 还必须逐段应用 Stable Knowledge Gate，删除可从源码、schema、help、测试或 CI 快速重建的库存，同时保留决策理由、边界、不变量、契约、失败语义和危险工作流。
 
-所以现在的正确用法是两段式：先拿 CLI 报告，再由 `recorder` 执行语义收敛并跑 `validate`，最后由工作流用 `commit` 收尾。
+收敛不能靠 archive、搬运低价值内容、无脑按时间删除或把无关路径挂到文档维持 coverage。success 要求知识密度或路由实质改善、validate 通过，并且合理的 `code.paths` 仍准确。
 
-## upgrade 的当前状态
+当前 convergence 快照没有 prune 后的独立刷新入口，因此规模下降后 growth gate 可能继续显示 above；在 CLI 提供受控刷新能力前，以本次 report 的实际规模和候选为准。该限制消失时应删除这条过渡说明。
 
-`upgrade` 仍是显式命令，且永不应被主动建议。当前 CLI 做的是 legacy 盘点：
+## Upgrade 始终显式
 
-- 如果已经是纯 V3 结构，返回 `no_change`
-- 如果 `llmdoc/` 根本不存在，提示应该走 `init`
-- 如果检测到 V2 标记或混合结构，返回 `dry_run`，列出 legacy paths、目标 V3 结构，以及是否需要 recorder 做 semantic migration
+upgrade 不属于 update、prune 或 hook 的隐式路径，也永不主动建议。CLI 只盘点 legacy/V2 结构并给出诊断；`recorder` 负责语义迁移，不自动搬运或删除正文。
 
-这意味着当前 CLI 不会自动把 V2 文本搬进 V3，也不会自动删除 legacy 文件。迁移仍然是“CLI 给诊断，recorder 做正式改写”的两段式流程。
-
-upgrade 的收尾顺序有一条硬约束：迁移后若没有 `llmdoc/meta.json` 台账存活，必须先用 `init-state` 种出台账，再跑 `validate` 修复全部失败（`validate` 没有台账必失败，顺序不能颠倒），最后由工作流用 `commit --all` 收尾并推进 baseline。最终汇报以 `validate` 与 `commit` 的结果为准。
-
-## 文档维护时要特别注意
-
-命令文档描述的是最终工作流契约，CLI 则是当前可执行边界。两者暂时不完全等价时，稳定文档必须把这个差异写清楚，避免把尚未自动化的收敛或迁移描述成“命令一跑就完成”。
-
-growth gate 也有一个这样的差异：`meta.json` 的 convergence 快照当前仅由 `init-state` 写入，prune 成功后 CLI 尚无刷新入口，而手工编辑 `meta.json` 被契约禁止。因此规模实际下降后 gate 仍会持续报 above；评估是否需要再次 prune 时，应以 `prune --report` 的 duplicate/merge candidates 与实际规模趋势为准，而不是只看 gate 信号。
-
-对外叙述还要保持 upgrade 的授权边界：它是独立的显式命令，不属于 update 自动升级路径，也不应被 prune、hook 或普通日常提示词悄悄带出。
+若迁移后没有 ledger，必须先 `init-state`，再 validate，最后用 `commit --all` 收尾；顺序错误会让校验缺少有效性台账。工作流契约与 CLI 当前能力不等价时，稳定文档必须明确人工判断边界，不能把诊断命令描述成自动完成迁移。

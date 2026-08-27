@@ -1,5 +1,5 @@
 ---
-description: 读取面、改写面与 prune/upgrade。
+description: 渐进读取模型，以及结构改写和 commit 的安全、事务边界。
 kind: reference
 relations:
   related:
@@ -24,43 +24,18 @@ code:
     - cli/schemas/output.schema.json
 ---
 
-# 检索面与轻量改写面
+# 检索面与改写边界
 
-## 渐进读取命令
+## 渐进读取模型
 
-- `tree`：列出根 singleton 和 topic；不带 `--docs` 时停在 topic 层，topic 摘要由文档名聚合（无入口节点）。
-- `index`：输出 front matter 投影，用于不读正文时判断相关性。
-- `show`：按路径读取正文，受预算分页约束。
-- `search`：按 front matter、标题和正文检索，返回 snippet。
-- `context --files`：按 `code.paths` 反查文档，再补 `relations.requires` 闭包。
+读取面按“地图/索引或搜索/正文”逐层暴露，调用者在任一层都可以停止；这些命令返回受预算约束的公开投影，不泄漏内部解析对象。`context --files` 用 `code.paths` 反查 owner，并补齐 `relations.requires` 前置闭包。文本与 JSON 输出共用 schema 契约，避免不同宿主形成第二套语义。
 
-这些命令返回投影，不暴露内部解析对象。`tree` 两种 `--json` 形态及其余命令 payload 由 `cli/schemas/output.schema.json` 定义，在 `cli/src/lib/output-schema.ts` 中于 stringify 前用 Ajv 2020 校验。分页预算按输出投影估算，`show` 因含正文而按带 `body` 的输出估算。
+## 结构改写不变量
 
-## 结构性改写命令
+所有路径先经过仓库与 `llmdoc/` realpath 边界校验，符号链接逃逸和覆盖现有目标都会被拒绝。`adopt` 只登记已有合法正文；`mv` 负责移动及内部引用/ledger key 重写，失败时回滚，不触碰源码。
 
-- `new`：只会在 `llmdoc/` 下生成 `.mdx` 脚手架，模板来自 `cli/templates/doc.mdx`
-- `mv`：用 `git mv` 移动文件或整个 topic，并重写 `relations`、正文链接和 `meta.json.documents` key
-- `init-state`：首次生成 `meta.json` 台账骨架（全部文档 `validatedRevision: null` + 实测 convergence 统计）；已有台账时拒绝覆盖
-- `adopt`：无损登记已存在的合法 `.mdx` 到 `meta.json`（只新增 `validatedRevision: null` 条目，不改正文；已登记路径幂等 no-op；目标文档需通过除 `meta.entry.missing` 外的结构校验）
-- `commit`：一体化收尾——validate 门控 → 以 pathspec 只提交 `llmdoc/` 写集（不卷入用户 staged 的其他文件）→ fingerprint → `meta.json` 单独小 commit。不要手工做这个序列，也不要用 `--amend` 并 meta（会改写 fingerprint 刚记录的 hash）；`--no-verify` 透传给 git，供 husky 等重钩子仓库使用。创建任何 commit 前会先对 fingerprint 前置条件（git 可推进、关联源码无 dirty）做预检，预检失败 fail-closed，工作树保持调用前状态，不会留下 docs 已提交但 meta 未刷新的半完成状态
+`commit` 是正式收尾边界：先 validate 和 revision/dirty 预检，再只提交 `llmdoc/` 写集，最后刷新 fingerprint 并单独提交 `meta.json`。`--verified` 把已复核但无需改正文的文档纳入 fingerprint，可形成 meta-only commit；有正文改动时，changed 与 verified 文档取并集。`--all` 表示全量复核，不能与 `--verified` 同用。
 
-`new` 和 `mv` 都会先过仓库内 realpath 校验；若目标越界或经符号链接逃逸，CLI 会拒绝继续。`new` 可直接在新 topic 下建文档（目录自动创建），但拒绝 `index.mdx` 文件名。
+预检失败必须在创建任何 commit 前 fail-closed，用户已 staged 的非 llmdoc 文件不得被卷入。fingerprint 锚定正文提交前后的真实 HEAD，因此不得用 `--amend` 把 meta 追进前一提交。
 
-`mv` 只重写 `llmdoc/` 内部引用，不碰源码，并保证三件事：
-
-- 拒绝覆盖已存在目标；目标 topic 不存在时自动创建目录
-- 改写 Markdown 链接时会保留 query / anchor 后缀，并跳过 fenced code 与 inline code 里的示例文本
-- 引用重写阶段失败会自动回滚 `llmdoc/` 到移动前状态
-
-## 维护子命令边界
-
-`prune` 和 `upgrade` 仍是“读诊断、由 recorder 执行语义改写”的形态：
-
-- `prune` 只有 `--report` 模式，会输出 growth、重复候选和小文档合并候选；不直接写文档。
-- `upgrade` 会盘点 legacy/V2 标记，如 `index.md`、`startup.md`、`must/`、`overview/`、`memory/`、`state/sync.md`，并报告目标 V3 结构；它不会自动迁移正文，也不应被普通 update/prune 流程隐式触发。
-
-因此，真正的收敛与 V2→V3 迁移仍要由工作流层调用 `recorder` 完成。
-
-## Web Viewer（`serve`）
-
-`serve` 启动只绑定 127.0.0.1 的前台 HTTP 服务（`cli/src/commands/serve.ts` + `cli/assets/viewer.html`），面向人展示文档列表、requires/related/link 关系图与每份文档的新鲜度。`/api/state` 每次请求实时重算 workspace、delta 与 validate，不落持久化状态；`/api/doc` 只按已索引 llmdocPath 查表，天然免疫路径遍历；正文渲染依赖 `marked`，缺失时降级为原文展示。
+`prune` 与 `upgrade` 的 CLI 只负责可重复的诊断；合并、删除、迁移和知识价值判断始终由工作流层交给 `recorder`。
