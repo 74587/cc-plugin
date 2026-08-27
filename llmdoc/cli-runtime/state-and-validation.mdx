@@ -1,5 +1,5 @@
 ---
-description: Workspace 扫描、schema 校验与影响面规则。文档 ID 即 llmdoc/ 下相对路径，topic 名即第一层目录名。
+description: Workspace 扫描、revision/delta、schema 校验与 hook 信号。文档 ID 即 llmdoc/ 下相对路径，topic 名即第一层目录名。
 kind: architecture
 code:
   paths:
@@ -82,9 +82,10 @@ dirty worktree 不会伪造 revision。`staged`、`unstaged`、`untracked` 只�
 
 公开 `--json` 输出会先按 `cli/schemas/output.schema.json` 过 Ajv 2020 校验；`hook stop` 与 `hook compact` 还会先解析并校验 hook payload。三类 hook 都是只读信号：
 
-- 是否需要更新统一取决于过滤后的 `impacts`、`needsReview` 和未映射的 committed/dirty 实现路径；`llmdoc/**`、`.llmdoc-tmp/**` 与 `.llmdocignore` 已排除路径不会形成可执行信号
-- `session-start` 输出短文本摘要；没有可执行信号时只标记文档无待处理影响，不报告原始 baseline 落后数
-- `stop` 与 `compact` 成功时输出 `{ continue: true, systemMessage? }`；没有可执行信号时 `stop` 不附带 `systemMessage`
+- 代码更新信号仍只取决于过滤后的 `impacts`、`needsReview` 和未映射的 committed/dirty 实现路径；`llmdoc/**`、`.llmdoc-tmp/**` 与 `.llmdocignore` 已排除路径不会进入 delta 信号
+- hook 另行计数 `.llmdoc-tmp/reflections/pending/` 直属的 Markdown 候选；`session-start` 即使没有代码影响也会报告候选数，`stop` 则会建议 `/llmdoc:update --reflection`
+- `session-start` 没有代码影响时不报告原始 baseline 落后数；`stop` 只有在代码影响和 pending 候选都不存在时才不附带 `systemMessage`
+- `compact` 要求把 `lesson_candidates` 连同 active goal、已读文档、关键结论和下一步写入 `LLMDOC_STATE`，供 compact re-entry 延续，而不复制对话 transcript
 - 任何异常都 fail-open，不阻塞开发
 
-因此，只修改 llmdoc 的提交以及 fingerprint 收尾的 `llmdoc/meta.json` follow-up 即使使 HEAD 前进，也保持 knowledge clean：`session-start` 不会把它误报为需要更新，`stop` 保持静默。
+因此，只修改 llmdoc 的提交以及 fingerprint 收尾的 `llmdoc/meta.json` follow-up 即使使 HEAD 前进，也保持 knowledge clean：在没有 pending candidate 时，`session-start` 不会把它误报为需要更新，`stop` 保持静默。

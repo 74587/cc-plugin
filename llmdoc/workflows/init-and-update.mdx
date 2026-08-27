@@ -1,14 +1,16 @@
 ---
-description: init 与 update 的当前契约：何时允许运行、何时需要 investigator、何时只做 recorder 直改，以及收尾时 recorder 与 calling workflow 各自负责的校验与提交步骤。
+description: init 与 update 的当前契约：light/deep 路由、reflection candidate 晋升门，以及 recorder 与 calling workflow 的收尾分工。
 kind: guide
 relations:
   related:
     - cli-runtime/state-and-validation.mdx
 code:
   paths:
+    - skills/llmdoc/SKILL.md
     - skills/init/SKILL.md
     - skills/update/SKILL.md
     - agents/investigator.md
+    - agents/reflector.md
     - agents/recorder.md
     - cli/src/commands/status.ts
     - cli/src/commands/delta.ts
@@ -32,12 +34,18 @@ code:
 
 ## update 如何选择 light 或 deep
 
-`update` 的入口是 `status` 和 `delta`：
+`update` 的入口是 `status`、`delta`，以及显式声明的 reflection candidates：
 
-- light：受影响文档已映射、事实边界清楚，直接让 `recorder` 从 CLI 证据同步文档
-- deep：出现 unmapped files、结构边界变化、事实冲突、影响过广，或有文档缺少/失去有效 `validatedRevision`，先由 `investigator` 产出 scoped 报告，再交给 `recorder`
+- light：受影响文档或候选 owner 已映射、事实边界清楚，直接让 `recorder` 从 CLI 证据同步文档
+- deep：出现 unmapped files、候选 owner 或根因不清、结构边界变化、事实冲突、影响过广，或有文档缺少/失去有效 `validatedRevision`，先由 `investigator` 产出 scoped 报告，再交给 `recorder`
 
 命令文档把源码编辑排除在授权之外；update 只同步 `llmdoc/` 与 `meta.json`。
+
+## reflection candidate 的晋升门
+
+`/llmdoc:update --reflection` 才授权工作流读取并处理声明的候选；省略路径时读取 `.llmdoc-tmp/reflections/pending/` 直属的 Markdown 候选。pending candidate 本身就是 update 信号，即使没有代码 delta 也要进入复核。
+
+候选必须包含可核对的 trigger、错误假设或动作、根因、预防规则、作用域与置信度。用户纠正可以确认意图，但仓库事实仍要由代码、测试或稳定文档验证；通过 `search` 和定向 `show` 找到 owner 并查重后，`recorder` 只把可复用的成熟规则折入既有 architecture/guide，不创建 tracked reflection 文档。晋升、已覆盖或驳回的候选由 calling workflow 归档到 resolved；流程 incomplete/failed 时保持 pending。
 
 ## recorder 与工作流的收尾分工
 

@@ -1,10 +1,11 @@
 ---
-description: 开发与发布：包结构、根脚本与 GitHub workflows。
+description: 开发与发布：编辑前分支同步、包结构、根脚本与 GitHub workflows。
 kind: reference
 code:
   paths:
     - package.json
     - cli/package.json
+    - .github/workflows/ci.yml
     - .github/workflows/codex-plugin-scanner.yml
     - .github/workflows/release.yml
     - README.md
@@ -17,6 +18,10 @@ code:
 
 - `cli/package.json` 定义公开 npm 包 `@tokenroll/llmdoc`，Node 要求 `>=18`，唯一 bin 是 `llmdoc`
 - 仓库根 `package.json` 是 llmdoc 自身的私有开发工作区，主要把 `./cli` 挂成 devDependency，并转发 `build`、`lint`、`test`、`typecheck`、`validate:dogfood`、`check:prompts`；这仅服务本仓库开发，不代表消费方应把 llmdoc 加入业务项目依赖
+
+## 非平凡编辑前的分支同步
+
+在已有 remote-tracking 的开发分支开始非平凡编辑前，先检查 worktree 是否有需要保存的改动，再 fetch 并确认本地与远端的 ahead/behind 或 divergence；有落后或分叉时，先按仓库认可的方式完成同步并确认工作树恢复稳定，再开始编辑。仓库若规定 rebase，就在恢复 WIP 前完成 rebase；这是一条受仓库策略约束的同步规则，不代表所有仓库都必须使用 rebase。
 
 ## 本地验证
 
