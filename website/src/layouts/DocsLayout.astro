@@ -1,0 +1,68 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+
+interface Props {
+  title: string;
+  description: string;
+  locale?: "en" | "zh";
+  section: "overview" | "getting-started" | "concepts" | "workflows" | "cli";
+}
+
+const { title, description, locale = "en", section } = Astro.props;
+const isZh = locale === "zh";
+const prefix = isZh ? "/zh/docs" : "/docs";
+const items = [
+  { id: "overview", label: isZh ? "概览" : "Overview", href: `${prefix}/` },
+  { id: "getting-started", label: isZh ? "开始使用" : "Getting started", href: `${prefix}/getting-started/` },
+  { id: "concepts", label: isZh ? "核心概念" : "Core concepts", href: `${prefix}/concepts/` },
+  { id: "workflows", label: isZh ? "工作流" : "Workflows", href: `${prefix}/workflows/` },
+  { id: "cli", label: "CLI", href: `${prefix}/cli/` },
+];
+---
+
+<BaseLayout title={title} description={description} locale={locale}>
+  <div class="docs-shell shell">
+    <aside class="docs-sidebar">
+      <p class="eyebrow">{isZh ? "文档" : "Documentation"}</p>
+      <nav aria-label={isZh ? "文档章节" : "Documentation sections"}>
+        {items.map((item, index) => (
+          <a href={item.href} aria-current={item.id === section ? "page" : undefined}>
+            <span>{String(index + 1).padStart(2, "0")}</span>{item.label}
+          </a>
+        ))}
+      </nav>
+      <div class="sidebar-note">
+        <span>EXTERNAL TOOLING</span>
+        <code>npx -y @tokenroll/llmdoc</code>
+      </div>
+    </aside>
+    <article class="prose docs-content">
+      <p class="doc-index">llmdoc / docs / {section}</p>
+      <slot />
+    </article>
+  </div>
+</BaseLayout>
+
+<style>
+  .docs-shell { display: grid; grid-template-columns: 245px minmax(0, 1fr); gap: clamp(2rem, 7vw, 7rem); min-height: 78svh; padding-block: clamp(3rem, 7vw, 6rem); }
+  .docs-sidebar { position: sticky; top: 104px; align-self: start; }
+  .docs-sidebar .eyebrow { margin-top: 0; }
+  .docs-sidebar nav { display: grid; margin-top: 1.5rem; border-top: 1px solid var(--line); }
+  .docs-sidebar nav a { display: flex; gap: 0.75rem; border-bottom: 1px solid var(--line); padding: 0.7rem 0.2rem; color: var(--muted); font-size: 0.84rem; text-decoration: none; }
+  .docs-sidebar nav a span { color: var(--faint); font-family: var(--mono); font-size: 0.68rem; }
+  .docs-sidebar nav a[aria-current="page"] { color: var(--green); }
+  .sidebar-note { margin-top: 2.5rem; border-left: 2px solid var(--amber); padding-left: 0.8rem; }
+  .sidebar-note span, .sidebar-note code { display: block; }
+  .sidebar-note span { color: var(--faint); font-family: var(--mono); font-size: 0.62rem; }
+  .sidebar-note code { margin-top: 0.4rem; color: var(--amber); font-size: 0.68rem; overflow-wrap: anywhere; }
+  .docs-content { min-width: 0; }
+  .doc-index { margin: 0 0 1rem; color: var(--green); font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; }
+  @media (max-width: 780px) {
+    .docs-shell { grid-template-columns: 1fr; }
+    .docs-sidebar { position: static; }
+    .docs-sidebar nav { grid-template-columns: repeat(2, 1fr); }
+    .docs-sidebar nav a:nth-child(odd) { border-right: 1px solid var(--line); padding-right: 0.7rem; }
+    .docs-sidebar nav a:nth-child(even) { padding-left: 0.7rem; }
+    .sidebar-note { display: none; }
+  }
+</style>

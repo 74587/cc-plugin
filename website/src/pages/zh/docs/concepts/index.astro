@@ -1,0 +1,40 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="核心概念"
+  description="理解 llmdoc 背后的 Context Floor、渐进读取、三道知识门、文档结构与有效性模型。"
+  locale="zh"
+  section="concepts"
+>
+  <h1>核心概念</h1>
+  <blockquote>真正有用的问题不是“模型能装多少上下文”，而是“什么上下文足以解决当前任务”。</blockquote>
+
+  <h2>Context Floor</h2>
+  <p>Context Floor 是 Agent 解决当前问题所需的上下文丰富度。工具调用数量、Token 占用和关键信息密度，共同决定到达这条线需要多久。</p>
+  <p>llmdoc 在广泛探索源码前提高信息密度，但不替代源码。它收窄工作集后，原生工具继续核对实现文本、行号、测试与 Git 状态等实时事实。</p>
+
+  <h2>渐进读取</h2>
+  <p>检索面逐层披露：先给地图或元数据，再按搜索或源码所有权定位，最后读取选中的正文。调用者可以在任一层停止。</p>
+  <pre><code>tree / index  →  search / context  →  show</code></pre>
+
+  <h2>三道知识门</h2>
+  <h3>Retrieval Gate</h3>
+  <p>首次广泛探索前，以及进入新子系统时，选择一个符合当前意图的 CLI 入口。</p>
+  <h3>Reflection Gate</h3>
+  <p>用户纠正、验证失败和重大返工可以形成隐私安全的临时候选；完整会话与偶发错误不会。</p>
+  <h3>Stable Knowledge Gate</h3>
+  <p>只有足够持久、会改变未来选择、归属清晰且难以从真相源快速还原的候选，才进入跟踪知识。</p>
+
+  <h2>文档模型</h2>
+  <p>V3 使用带 YAML front matter 的纯 Markdown <code>.mdx</code> 文档。路径就是文档 ID。文档树由根 singleton 和一层 topic 目录组成，topic 不需要 <code>index.mdx</code>。</p>
+  <pre><code>llmdoc/
+├── architecture.mdx
+├── api-client/
+│   └── retry-policy.mdx
+└── meta.json</code></pre>
+
+  <h2>有效性以 Git 为基础</h2>
+  <p><code>llmdoc/meta.json</code> 跟踪经过验证的 Git revision。工作树 dirty 是额外信号，不会被伪装成 revision。delta 命中意味着必须复核，并不自动意味着正文需要改写。</p>
+</DocsLayout>

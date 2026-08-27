@@ -1,0 +1,54 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="CLI 参考"
+  description="llmdoc V3 的发现、有效性、安全文档改写、收敛、迁移与宿主 hook 命令参考。"
+  locale="zh"
+  section="cli"
+>
+  <h1>CLI 参考</h1>
+  <p>以 <code>npx -y @tokenroll/llmdoc &lt;command&gt;</code> 调用外部 CLI。工作流需要可复现时，在包名中固定版本。</p>
+
+  <h2>发现与读取</h2>
+  <dl class="commands">
+    <div><dt><code>tree</code></dt><dd>根文档与 topic 的动态地图。</dd></div>
+    <div><dt><code>index [--topic …] [--kind …]</code></dt><dd>用于发现文档的 front matter 投影。</dd></div>
+    <div><dt><code>search &lt;query&gt;</code></dt><dd>在跟踪知识中执行词法搜索。</dd></div>
+    <div><dt><code>context --files &lt;src…&gt;</code></dt><dd>把源码路径映射到 owner 文档与依赖前置。</dd></div>
+    <div><dt><code>show &lt;path…&gt;</code></dt><dd>读取选中的文档正文。</dd></div>
+    <div><dt><code>serve</code></dt><dd>在 <code>127.0.0.1</code> 启动本地 Viewer，查看文档结构、关系与状态。</dd></div>
+  </dl>
+
+  <h2>检查有效性</h2>
+  <dl class="commands">
+    <div><dt><code>status</code></dt><dd>有效性、baseline、dirty 与增长信号。</dd></div>
+    <div><dt><code>delta</code></dt><dd>从代码变化计算受影响文档闭包。</dd></div>
+    <div><dt><code>validate</code></dt><dd>校验 schema、结构、关系、链接、代码路径与 ledger 一致性。</dd></div>
+  </dl>
+
+  <h2>安全改写</h2>
+  <dl class="commands">
+    <div><dt><code>new &lt;path&gt; --kind &lt;kind&gt;</code></dt><dd>创建 V3 文档骨架。</dd></div>
+    <div><dt><code>adopt &lt;path…&gt;</code></dt><dd>登记已有合法文档，不重写正文。</dd></div>
+    <div><dt><code>mv &lt;from&gt; &lt;to&gt;</code></dt><dd>事务式移动文档并重写内部引用。</dd></div>
+    <div><dt><code>commit [--verified &lt;path…&gt; | --all]</code></dt><dd>校验、提交正文，并刷新变化或验证未变文档的 revision。</dd></div>
+    <div><dt><code>fingerprint --update &lt;path…&gt; | --all</code></dt><dd>刷新 ledger 中经过验证的 revision。</dd></div>
+  </dl>
+
+  <h2>显式操作与 hooks</h2>
+  <dl class="commands">
+    <div><dt><code>prune --report</code></dt><dd>只读的知识收敛信号。</dd></div>
+    <div><dt><code>upgrade</code></dt><dd>显式 V2 迁移诊断。</dd></div>
+    <div><dt><code>hook session-start | stop | compact</code></dt><dd>只读、fail-open 的宿主信号。</dd></div>
+  </dl>
+</DocsLayout>
+
+<style>
+  .commands { border-top: 1px solid var(--line); }
+  .commands div { display: grid; grid-template-columns: minmax(210px, 0.8fr) 1fr; gap: 1rem; border-bottom: 1px solid var(--line); padding: 0.9rem 0; }
+  .commands dt, .commands dd { margin: 0; }
+  .commands dd { color: var(--muted); }
+  @media (max-width: 620px) { .commands div { grid-template-columns: 1fr; gap: 0.4rem; } }
+</style>

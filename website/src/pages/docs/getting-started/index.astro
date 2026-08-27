@@ -1,0 +1,47 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="Getting started"
+  description="Start using llmdoc through its external CLI, Claude Code plugin, Codex plugin, or a thin AGENTS.md recipe."
+  section="getting-started"
+>
+  <h1>Getting started</h1>
+  <p>llmdoc requires Node.js 18 or newer and Git. The CLI is external tooling: do not add it to the repository you are working on.</p>
+
+  <h2>Try the knowledge map</h2>
+  <pre><code>npx -y @tokenroll/llmdoc tree</code></pre>
+  <p><code>-y</code> lets npx resolve a missing package into the machine cache without editing the consumer repository's <code>package.json</code> or lockfile.</p>
+
+  <div class="callout">
+    <p>Always use the full scoped package name. A bare <code>npx llmdoc</code> resolves to an unrelated package.</p>
+  </div>
+
+  <h2>Claude Code</h2>
+  <p>Add the repository-verified marketplace, then install the plugin:</p>
+  <pre><code>/plugin marketplace add https://github.com/TokenRollAI/llmdoc
+/plugin install llmdoc@llmdoc-plugin</code></pre>
+
+  <h2>Codex</h2>
+  <p>Add llmdoc as a plugin marketplace source, then install it from the Plugins Directory. Review the plugin hooks before trusting them.</p>
+  <pre><code>codex plugin marketplace add TokenRollAI/llmdoc</code></pre>
+
+  <h2>Other coding agents</h2>
+  <p>Use a thin <code>AGENTS.md</code> rule that routes discovery through the external CLI. Keep the durable knowledge in <code>llmdoc/</code>; never hand-edit <code>llmdoc/meta.json</code>.</p>
+
+  <h2>Your first retrieval</h2>
+  <pre><code># Unclear scope
+npx -y @tokenroll/llmdoc tree
+
+# A concept or contract
+npx -y @tokenroll/llmdoc search "retry policy"
+
+# Context for concrete files
+npx -y @tokenroll/llmdoc context --files src/api/client.ts</code></pre>
+  <p>These are alternatives, not a mandatory sequence. Read document bodies with <code>show</code> only after identifying what matters.</p>
+
+  <h2>Browse locally</h2>
+  <p>Launch the built-in local Viewer to inspect the current repository's document structure, relations, and status. The server binds only to <code>127.0.0.1</code>.</p>
+  <pre><code>npx -y @tokenroll/llmdoc serve</code></pre>
+</DocsLayout>

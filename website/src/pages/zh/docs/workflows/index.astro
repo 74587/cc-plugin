@@ -1,0 +1,42 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="工作流"
+  description="以正确的授权与安全边界使用 llmdoc 的日常检索，以及显式的 init、update、prune 和 upgrade 工作流。"
+  locale="zh"
+  section="workflows"
+>
+  <h1>工作流</h1>
+  <p>日常检索轻量且只读。知识改写则通过带校验、Git 边界与明确结果状态的显式工作流完成。</p>
+
+  <h2>日常检索</h2>
+  <ol>
+    <li>选择一个入口：<code>tree</code>、<code>search</code>、<code>context --files</code>、<code>index</code> 或 <code>show</code>。</li>
+    <li>让 llmdoc 收窄工作集。</li>
+    <li>用原生工具核对精确、实时的源码事实。</li>
+    <li>只有进入新子系统时，才再次应用检索门。</li>
+  </ol>
+
+  <h2>初始化</h2>
+  <p>只有仓库不存在有效 V3 知识面时，才使用 <strong>init</strong>。它调查 topic 边界、写入少量高价值文档、完成校验，并以 Git 状态收尾。</p>
+
+  <h2>更新</h2>
+  <p><strong>update</strong> 对照代码 delta 与已授权的 reflection candidate，语义复核现有知识。仍然正确的文档会被标记为 verified unchanged，不会累积变更日志。</p>
+  <div class="callout"><p>update 信号产生的是复核集合，不是正文写入列表。</p></div>
+
+  <h2>收敛</h2>
+  <p><strong>prune</strong> 删除重复、碎片与可低成本重建的库存。机械 report 只提供信号；真正的知识价值仍由 recorder 判断。</p>
+
+  <h2>迁移</h2>
+  <p><strong>upgrade</strong> 只用于用户显式要求的 V2 到 V3 迁移。它绝不会隐式包含在 update 或 prune 中。</p>
+
+  <h2>安全与完成</h2>
+  <ul>
+    <li>改写工作流需要确认，以及干净的 llmdoc 写入边界。</li>
+    <li>完成前必须校验；失败的写入通过 Git 回滚。</li>
+    <li><code>commit</code> 不会卷入用户 staged 的无关文件，并单独刷新有效性。</li>
+    <li>工作流只报告一种结果：<code>success</code>、<code>no_change</code>、<code>dry_run</code>、<code>incomplete</code> 或 <code>failed</code>。</li>
+  </ul>
+</DocsLayout>

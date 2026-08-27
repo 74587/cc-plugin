@@ -1,0 +1,34 @@
+# llmdoc
+
+> Persistent external context for codebases. llmdoc preserves architecture, constraints, rationale, contracts, non-obvious failures, and risky workflows that source code cannot cheaply reconstruct.
+
+Canonical site: https://llmdoc.tokenroll.ai/
+Repository: https://github.com/TokenRollAI/llmdoc
+
+## English documentation
+
+- https://llmdoc.tokenroll.ai/docs/
+- https://llmdoc.tokenroll.ai/docs/getting-started/
+- https://llmdoc.tokenroll.ai/docs/concepts/
+- https://llmdoc.tokenroll.ai/docs/workflows/
+- https://llmdoc.tokenroll.ai/docs/cli/
+
+## 中文文档
+
+- https://llmdoc.tokenroll.ai/zh/docs/
+- https://llmdoc.tokenroll.ai/zh/docs/getting-started/
+- https://llmdoc.tokenroll.ai/zh/docs/concepts/
+- https://llmdoc.tokenroll.ai/zh/docs/workflows/
+- https://llmdoc.tokenroll.ai/zh/docs/cli/
+
+## CLI
+
+Treat llmdoc as external tooling. Do not add it to the consumer project's package.json or lockfile.
+
+    npx -y @tokenroll/llmdoc tree
+
+To inspect the current repository's document structure, relations, and status in a browser, start the local-only Viewer. It binds to 127.0.0.1.
+
+    npx -y @tokenroll/llmdoc serve
+
+Always use the full scoped package name. A bare npx llmdoc resolves to an unrelated package.

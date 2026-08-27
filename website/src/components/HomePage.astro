@@ -1,0 +1,195 @@
+---
+import ContextFloorDemo from "./ContextFloorDemo.astro";
+interface Props { locale?: "en" | "zh" }
+const { locale = "en" } = Astro.props;
+const isZh = locale === "zh";
+---
+
+<section class="hero shell">
+  <div class="hero-copy">
+    <p class="eyebrow">Persistent external context · V3</p>
+    <h1 class="display">{isZh ? "让代码库拥有可持续的记忆。" : "Give your codebase a memory that lasts."}</h1>
+    <p class="lede">
+      {isZh
+        ? "llmdoc 保存源码难以低成本还原的架构、约束与工作知识，让 Coding Agent 更快到达 Context Floor。"
+        : "llmdoc preserves architecture, constraints, and working knowledge that source code cannot cheaply give back—so coding agents reach the Context Floor faster."}
+    </p>
+    <div class="hero-actions">
+      <a class="button" href={isZh ? "/zh/docs/getting-started/" : "/docs/getting-started/"}>{isZh ? "开始使用 →" : "Get started →"}</a>
+      <a class="button secondary" href="https://github.com/TokenRollAI/llmdoc">{isZh ? "在 GitHub 查看" : "View on GitHub"}</a>
+    </div>
+  </div>
+  <aside class="manifesto" aria-label={isZh ? "设计原则" : "Design principle"}>
+    <span>CONTEXT / 001</span>
+    <blockquote>{isZh ? "Context window 不是长期存储。" : "A context window is not long-term storage."}</blockquote>
+    <p>{isZh ? "持久知识留在仓库，按需检索进入会话。" : "Durable knowledge stays with the repository and enters a session only when needed."}</p>
+  </aside>
+</section>
+
+<hr class="rule" />
+
+<section class="section shell floor-section">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Time to Context Floor</p>
+      <h2 class="section-title">{isZh ? "先到达足以解决问题的上下文。" : "Reach enough context to solve the problem."}</h2>
+    </div>
+    <p class="section-intro">
+      {isZh
+        ? "Context Floor 是 Agent 完成当前任务所需的上下文丰富度。llmdoc 不试图把整个仓库塞进窗口，而是先给地图，再给相关知识。"
+        : "The Context Floor is the richness of context an agent needs for the task at hand. llmdoc does not pour a repository into the window; it reveals a map, then the relevant knowledge."}
+    </p>
+  </div>
+  <ContextFloorDemo locale={locale} />
+</section>
+
+<section class="gates">
+  <div class="shell">
+    <p class="eyebrow">Knowledge pipeline</p>
+    <h2 class="section-title">{isZh ? "三道门，控制什么进入上下文。" : "Three gates decide what enters context."}</h2>
+    <div class="gate-grid">
+      <article>
+        <span>01 / RETRIEVE</span>
+        <h3>{isZh ? "检索门" : "Retrieval Gate"}</h3>
+        <p>{isZh ? "按意图从地图、搜索、代码路径或已知主题进入；在足够时停止。" : "Enter through a map, search, source paths, or a known topic. Stop as soon as the task has enough."}</p>
+        <code>tree → context → show</code>
+      </article>
+      <article>
+        <span>02 / REFLECT</span>
+        <h3>{isZh ? "反思门" : "Reflection Gate"}</h3>
+        <p>{isZh ? "只捕获用户纠正、验证证伪和重大返工等高信号教训，绝不保存完整会话。" : "Capture high-signal corrections and verified failures—not transcripts, trivia, or every turn."}</p>
+        <code>signal → candidate</code>
+      </article>
+      <article>
+        <span>03 / STABILIZE</span>
+        <h3>{isZh ? "稳定知识门" : "Stable Knowledge Gate"}</h3>
+        <p>{isZh ? "只有会改变未来选择、足够持久且难以快速重建的结论，才进入跟踪知识。" : "Promote only durable conclusions that change future choices and are expensive to reconstruct."}</p>
+        <code>verify → llmdoc/</code>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section shell boundary">
+  <div>
+    <p class="eyebrow">The boundary</p>
+    <h2 class="section-title">{isZh ? "知识，而不是库存。" : "Knowledge, not inventory."}</h2>
+  </div>
+  <div class="boundary-grid">
+    <article class="keep">
+      <p class="kicker">{isZh ? "保留" : "Keep"}</p>
+      <ul>
+        <li>{isZh ? "架构决策及其原因" : "Architecture decisions and rationale"}</li>
+        <li>{isZh ? "模块边界与跨模块契约" : "Boundaries and cross-module contracts"}</li>
+        <li>{isZh ? "不变量与非显而易见的失败语义" : "Invariants and non-obvious failure semantics"}</li>
+        <li>{isZh ? "危险但可重复的工作流" : "Risky, repeatable workflows"}</li>
+      </ul>
+    </article>
+    <article class="leave">
+      <p class="kicker">{isZh ? "留在真相源" : "Leave in canonical sources"}</p>
+      <ul>
+        <li>{isZh ? "源码文件与 API 清单" : "Source and API inventories"}</li>
+        <li>{isZh ? "日志、临时计划和会话摘要" : "Logs, temporary plans, session summaries"}</li>
+        <li>{isZh ? "Schema、测试或 help 可快速重建的事实" : "Facts cheaply rebuilt from schema, tests, or help"}</li>
+        <li>{isZh ? "未经验证的推测" : "Unverified speculation"}</li>
+      </ul>
+    </article>
+  </div>
+</section>
+
+<section class="install">
+  <div class="shell install-grid">
+    <div>
+      <p class="eyebrow">Start at the map</p>
+      <h2 class="section-title">{isZh ? "不向你的项目安装依赖。" : "No dependency added to your project."}</h2>
+      <p>{isZh ? "通过外部 CLI 读取 llmdoc。缺少包时，npx 会写入机器缓存，而不是消费仓库。" : "Run the CLI as external tooling. npx uses the machine cache without changing the consumer repository."}</p>
+    </div>
+    <div>
+      <pre><code>npx -y @tokenroll/llmdoc tree
+npx -y @tokenroll/llmdoc context --files src/api/client.ts</code></pre>
+      <div class="command-notes">
+        <span>Markdown / MDX</span><span>Git-native validity</span><span>Claude + Codex</span>
+      </div>
+      <a href={isZh ? "/zh/docs/getting-started/" : "/docs/getting-started/"}>{isZh ? "查看安装与宿主配置 →" : "Installation and host setup →"}</a>
+    </div>
+  </div>
+</section>
+
+<section class="section shell core">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Understand / retrieve / verify</p>
+      <h2 class="section-title">{isZh ? "先理解模型，再按意图取用。" : "Understand the model. Retrieve by intent."}</h2>
+    </div>
+    <p class="section-intro">{isZh ? "官网文档解释 llmdoc 的概念、工作流与安全边界；CLI 负责确定性的检索、状态检查与知识维护。" : "The documentation explains llmdoc's concepts, workflows, and safety boundaries. The CLI handles deterministic retrieval, status checks, and knowledge maintenance."}</p>
+  </div>
+  <div class="core-grid">
+    <a href={isZh ? "/zh/docs/" : "/docs/"} class="core-card">
+      <span>01</span><strong>{isZh ? "阅读文档" : "Read the docs"}</strong>
+      <p>{isZh ? "概念、工作流、CLI 与安全边界。" : "Concepts, workflows, CLI, and safety boundaries."}</p>
+      <i>→</i>
+    </a>
+    <a href={isZh ? "/zh/docs/cli/" : "/docs/cli/"} class="core-card accent">
+      <span>02</span><strong>{isZh ? "选择 CLI 入口" : "Choose a CLI route"}</strong>
+      <p><code>tree · search · context · show</code></p>
+      <i>→</i>
+    </a>
+  </div>
+</section>
+
+<style>
+  .hero { min-height: calc(100svh - 66px); display: grid; grid-template-columns: minmax(0, 1fr) 310px; align-items: end; gap: clamp(2rem, 7vw, 7rem); padding-block: clamp(5rem, 10vw, 9rem) 4rem; }
+  .hero-copy { max-width: 900px; }
+  .hero .display { max-width: 980px; }
+  .hero .lede { margin: 2rem 0 0; }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
+  .manifesto { align-self: center; border-top: 1px solid var(--green); border-bottom: 1px solid var(--line); padding-block: 1rem 1.2rem; }
+  .manifesto span { color: var(--green); font-family: var(--mono); font-size: 0.68rem; }
+  .manifesto blockquote { margin: 1.2rem 0; font-family: var(--serif); font-size: 1.55rem; line-height: 1.15; }
+  .manifesto p { margin: 0; color: var(--muted); font-size: 0.82rem; }
+  .section-head { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.65fr); gap: 2rem; align-items: end; margin-bottom: 3rem; }
+  .section-head .eyebrow { margin-top: 0; }
+  .section-intro { margin: 0; }
+  .gates { border-block: 1px solid var(--line); padding-block: clamp(4rem, 8vw, 7rem); background: #0d120c; }
+  .gate-grid { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 3rem; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+  .gate-grid article { min-height: 330px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: clamp(1.2rem, 3vw, 2rem); }
+  .gate-grid span { color: var(--green); font-family: var(--mono); font-size: 0.7rem; }
+  .gate-grid h3 { margin: 3.5rem 0 1rem; font-family: var(--serif); font-size: 1.9rem; font-weight: 500; }
+  .gate-grid p { color: var(--muted); }
+  .gate-grid code { display: inline-block; margin-top: 1rem; color: var(--amber); font-size: 0.75rem; }
+  .boundary { display: grid; grid-template-columns: 0.65fr 1fr; gap: clamp(2rem, 8vw, 7rem); }
+  .boundary-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); }
+  .boundary-grid article { padding: clamp(1rem, 3vw, 2rem); }
+  .boundary-grid article + article { border-left: 1px solid var(--line); }
+  .boundary-grid ul { margin: 1.2rem 0 0; padding-left: 1.15rem; color: var(--muted); }
+  .keep { background: rgba(167,255,106,0.035); }
+  .leave { background: rgba(255,196,91,0.025); }
+  .install { border-block: 1px solid #3d482d; padding-block: clamp(4rem, 8vw, 7rem); background: linear-gradient(115deg, #151d11, #0b0f0a 72%); }
+  .install-grid { display: grid; grid-template-columns: 0.8fr 1fr; gap: clamp(2rem, 8vw, 8rem); align-items: center; }
+  .install-grid > div:first-child > p:last-child { max-width: 590px; color: var(--muted); }
+  .install pre { margin-top: 0; font-size: clamp(0.78rem, 2vw, 1rem); }
+  .install a { font-family: var(--mono); font-size: 0.8rem; }
+  .command-notes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0 1.5rem; }
+  .command-notes span { border: 1px solid var(--line); padding: 0.2rem 0.45rem; color: var(--muted); font-family: var(--mono); font-size: 0.65rem; }
+  .core-grid { display: grid; grid-template-columns: repeat(2, 1fr); border: 1px solid var(--line); }
+  .core-card { position: relative; min-height: 250px; padding: clamp(1.4rem, 4vw, 2.5rem); color: var(--ink); text-decoration: none; }
+  .core-card + .core-card { border-left: 1px solid var(--line); }
+  .core-card > span { color: var(--faint); font-family: var(--mono); font-size: 0.72rem; }
+  .core-card strong { display: block; margin-top: 2.8rem; font-family: var(--serif); font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 500; }
+  .core-card p { max-width: 450px; color: var(--muted); }
+  .core-card i { position: absolute; top: 1.5rem; right: 1.5rem; color: var(--green); font-family: var(--mono); font-style: normal; font-size: 0.75rem; }
+  a.core-card:hover { background: var(--panel); color: var(--green); }
+  .core-card.accent { background: rgba(167,255,106,0.025); }
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; min-height: auto; }
+    .manifesto { max-width: 480px; }
+    .section-head, .boundary, .install-grid { grid-template-columns: 1fr; }
+    .gate-grid { grid-template-columns: 1fr; }
+    .gate-grid article { min-height: 0; }
+    .gate-grid h3 { margin-top: 2rem; }
+  }
+  @media (max-width: 640px) {
+    .boundary-grid, .core-grid { grid-template-columns: 1fr; }
+    .boundary-grid article + article, .core-card + .core-card { border-top: 1px solid var(--line); border-left: 0; }
+  }
+</style>

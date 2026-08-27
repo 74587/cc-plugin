@@ -1,0 +1,39 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="Core concepts"
+  description="Learn the Context Floor, progressive reading, three knowledge gates, document structure, and validity model behind llmdoc."
+  section="concepts"
+>
+  <h1>Core concepts</h1>
+  <blockquote>The useful question is not “How much context can the model hold?” but “What context is sufficient for this task?”</blockquote>
+
+  <h2>Context Floor</h2>
+  <p>The Context Floor is the richness of context an agent needs to solve the current problem. Tool calls, token footprint, and the density of key information all shape the time it takes to reach that floor.</p>
+  <p>llmdoc raises information density before broad source exploration. It does not replace source code: once it narrows the working set, native tools verify live details such as implementation text, line numbers, tests, and Git state.</p>
+
+  <h2>Progressive reading</h2>
+  <p>The retrieval surface reveals knowledge in layers: map or metadata first, then search or source ownership, then selected bodies. A caller may stop at any layer.</p>
+  <pre><code>tree / index  →  search / context  →  show</code></pre>
+
+  <h2>Three gates</h2>
+  <h3>Retrieval Gate</h3>
+  <p>Before broad discovery—and again when crossing into a new subsystem—choose the one CLI entry point that matches the intent.</p>
+  <h3>Reflection Gate</h3>
+  <p>User corrections, verification failures, and major rework can become privacy-safe temporary candidates. Transcripts and incidental mistakes do not.</p>
+  <h3>Stable Knowledge Gate</h3>
+  <p>A candidate enters tracked knowledge only when it is durable, changes future choices, has a clear owner, and is expensive to recover from a canonical source.</p>
+
+  <h2>Document model</h2>
+  <p>V3 uses pure Markdown in <code>.mdx</code> documents with YAML front matter. A path is the document ID. The tree has root singleton documents and one level of topic folders; topics do not need <code>index.mdx</code>.</p>
+  <pre><code>llmdoc/
+├── architecture.mdx
+├── api-client/
+│   └── retry-policy.mdx
+└── meta.json</code></pre>
+
+  <h2>Validity is Git-based</h2>
+  <p><code>llmdoc/meta.json</code> tracks validated Git revisions. Dirty worktree state is an additional signal, never a fabricated revision. A delta hit creates a review obligation; it does not automatically require a prose change.</p>
+</DocsLayout>
