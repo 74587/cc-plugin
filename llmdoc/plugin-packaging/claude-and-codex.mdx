@@ -30,6 +30,6 @@ Claude 根插件是手工维护的 canonical surface：skills 定义 Retrieval/R
 
 转换必须在临时副本生成后替换式同步，因为生成器不保证清除陈旧输出。Codex 角色文本不手工维护；宿主特有 front matter/TOML 可以不同，实际 skill 与 agent 指令正文必须与 Claude canonical 一致。
 
-`scripts/check-codex-surface.mjs` 在 CI 中机械校验版本/marketplace 身份、五个 skill 与三个 agent 的正文一致性、Reflection Gate 约束和 hook 调用。人工 checklist 只补宿主 UI policy 与信任模型等无法从正文等价判断的部分。
+`scripts/check-codex-surface.mjs` 在 CI 中机械校验版本/marketplace 身份、五个 skill 与三个 agent 的正文一致性、Reflection Gate 约束和 hook 调用。它还分别遍历 `skills/` 与 `.agents/skills/`，用 `gray-matter` 解析每份 `SKILL.md` 的 YAML front matter，并要求 `name`、`description` 是非空字符串；这是两侧各自的语法门槛，不替代跨宿主正文 parity。人工 checklist 只补宿主 UI policy 与信任模型等无法从正文等价判断的部分。
 
 hooks 位于共享插件根，一份配置供两种宿主使用；它们保持 fail-open、只读，且由安装宿主按自己的信任模型启用。

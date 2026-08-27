@@ -16,7 +16,7 @@ code:
 
 ## 消费与开发边界
 
-公开产物是 `@tokenroll/llmdoc` CLI；仓库根 package 只是私有开发工作区。消费项目通过外部 npx/global 安装使用 CLI，不把 llmdoc 写进自己的依赖和 lockfile。
+公开产物是 `@tokenroll/llmdoc` CLI；仓库根 package 只是私有开发工作区。消费项目通过外部 npx/global 安装使用 CLI，不把 llmdoc 写进自己的依赖和 lockfile。根工作区直接声明的 `gray-matter` 只供 `scripts/check-codex-surface.mjs` 解析 skill front matter，不是消费方依赖，也没有为 CLI 新增 runtime 依赖。
 
 ## 非平凡编辑前先同步
 
