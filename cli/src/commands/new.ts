@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { parseDocTargetShape, assertDocKindMatchesShape, assertDocumentKind } from "../lib/doc-shape.js";
 import { CliError } from "../lib/errors.js";
-import { ensureDirectory, findProjectRoot, normalizeRepoRelativePath, resolveInsideRoot } from "../lib/fs.js";
+import { ensureDirectory, findProjectRootForNew, normalizeRepoRelativePath, resolveInsideRoot } from "../lib/fs.js";
 import { packageRootFromImport } from "../lib/package-root.js";
 import { loadWorkspace } from "../lib/workspace.js";
 import { DocumentKind } from "../types.js";
@@ -17,7 +17,7 @@ interface NewOptions {
 }
 
 export function runNew(options: NewOptions): unknown {
-  const rootDir = findProjectRoot(options.cwd);
+  const rootDir = findProjectRootForNew(options.cwd);
   const repoRelativePath = normalizeDocDestination(options.path);
   const kind = assertDocumentKind(options.kind);
   const shape = parseDocTargetShape(repoRelativePath);
@@ -37,15 +37,21 @@ export function runNew(options: NewOptions): unknown {
     .replace("__KIND__", () => kind)
     .replace("__TITLE__", () => title);
 
+  const metaExists = fs.existsSync(path.join(rootDir, "llmdoc", "meta.json"));
   fs.writeFileSync(absolutePath, content);
   syncMetaEntry(rootDir, shape.llmdocPath);
 
   if (options.json) {
     return {
-      created: repoRelativePath
+      created: repoRelativePath,
+      next: metaExists
+        ? null
+        : "若 HEAD 尚无 commit，请先创建首次 Git 提交；然后运行 `npx -y @tokenroll/llmdoc init-state`。"
     };
   }
-  return `created: ${repoRelativePath}`;
+  return metaExists
+    ? `created: ${repoRelativePath}`
+    : `created: ${repoRelativePath}\nnext: 若仓库尚无提交，请先创建首次 Git 提交；然后运行 \`npx -y @tokenroll/llmdoc init-state\` 建立台账。`;
 }
 
 function normalizeDocDestination(input: string): string {

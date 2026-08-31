@@ -164,7 +164,8 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
       severity: "error",
       code: "meta.missing",
       path: "llmdoc/meta.json",
-      message: "缺少 llmdoc/meta.json。"
+      message:
+        "缺少 llmdoc/meta.json。请运行 `npx -y @tokenroll/llmdoc init-state` 建立台账（若仓库尚无提交，请先创建首次 Git 提交）。"
     });
   }
 

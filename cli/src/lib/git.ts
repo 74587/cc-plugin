@@ -35,6 +35,13 @@ export function gitCommitExists(rootDir: string, revision: string): boolean {
   return result.status === 0;
 }
 
+export function isUnbornHead(rootDir: string): boolean {
+  if (!isGitRepository(rootDir) || runGitSafe(rootDir, ["rev-parse", "--verify", "HEAD"]) !== null) {
+    return false;
+  }
+  return runGitSafe(rootDir, ["symbolic-ref", "--quiet", "HEAD"]) !== null;
+}
+
 // shallow clone(CI 常态)里历史 commit 不可达,revision 校验需要据此降级而不是误报陈旧。
 export function isShallowRepository(rootDir: string): boolean {
   return runGitSafe(rootDir, ["rev-parse", "--is-shallow-repository"]) === "true";
@@ -56,7 +63,7 @@ export function readGitState(rootDir: string, baselineRevision: string | null): 
     };
   }
 
-  const headRevision = runGitSafe(rootDir, ["rev-parse", "HEAD"]);
+  const headRevision = runGitSafe(rootDir, ["rev-parse", "--verify", "HEAD"]);
   const detached = runGitSafe(rootDir, ["symbolic-ref", "--quiet", "--short", "HEAD"]) === null;
   const inProgressOperation = detectInProgressOperation(rootDir);
   const stagedPaths = readPathList(rootDir, ["diff", "--name-only", "--no-renames", "--cached"]);
@@ -73,7 +80,7 @@ export function readGitState(rootDir: string, baselineRevision: string | null): 
 
   let degradedReason: string | null = null;
   if (!headRevision) {
-    degradedReason = "无法解析 HEAD commit。";
+    degradedReason = isUnbornHead(rootDir) ? "HEAD 尚无 commit（当前分支尚未创建首次提交）。" : "无法解析 HEAD commit。";
   } else if (baselineRevision && !gitCommitExists(rootDir, baselineRevision)) {
     degradedReason = `baseline.revision 不存在于当前 git 历史: ${baselineRevision}`;
   }

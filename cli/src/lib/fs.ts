@@ -11,6 +11,21 @@ export function findProjectRoot(startDir: string): string {
   throw new CliError("未找到 llmdoc/ 目录，请在仓库内运行该命令。", 2);
 }
 
+// new 是唯一允许在 llmdoc/ 尚不存在时运行的结构改写命令。
+// 首次创建严格锁定最近 Git 根；无 Git 但已有 llmdoc/ 时保留原有兼容路径。
+export function findProjectRootForNew(startDir: string): string {
+  const start = path.resolve(startDir);
+  const existingWorkspace = findProjectRootOrNull(start);
+  if (existingWorkspace) {
+    return existingWorkspace;
+  }
+  const gitRoot = findNearestGitRootOrNull(start);
+  if (gitRoot) {
+    return gitRoot;
+  }
+  throw new CliError("未找到 Git 仓库；请先运行 `git init`，再运行 `llmdoc new`。", 2);
+}
+
 export function findProjectRootOrNull(startDir: string): string | null {
   const start = path.resolve(startDir);
   const gitRoot = findNearestGitRootOrNull(start);

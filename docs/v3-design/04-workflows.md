@@ -68,7 +68,10 @@ preflight: 确认 llmdoc/ 不存在(存在有效 V3 → 拒绝并建议 update;V
 → 多个 Investigator 按互补主题调查(能力/数据流/集成/构建发布/横切约定)
 → coverage 检查与 follow-up(补缺口、解决冲突)
 → Recorder bootstrap:定 topic 集合 → 写根 architecture.mdx + 各 topic 按需文档(无入口节点)
-→ llmdoc validate 门控 → 生成 meta.json(baseline + convergence)
+→ unborn Git 仓库先建立真实 HEAD commit
+→ llmdoc init-state 生成 meta.json(baseline + convergence)
+→ llmdoc validate + Context Floor 验收
+→ llmdoc commit --all 收尾
 ```
 
 要点:先定 topic 边界再写正文;**不生成根 index**(地图由 `llmdoc tree` 动态承担);只创建支撑高价值知识的文档,不求全(自动生成的大而全入口已被实践证明有害);不生成空 folder。

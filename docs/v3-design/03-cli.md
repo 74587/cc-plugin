@@ -19,10 +19,10 @@ CLI 是 V3 的 Runtime 实体:所有确定性、可测试、重复出现的工�
 | `llmdoc tree` | **根入口的正式替代**(V2 `index.md` 的能力由它承担):输出根单例 + 全部 topic 及其文档名聚合摘要(topic 无入口节点)。默认紧凑到 topic 级;`--docs` 展开到文档级(path/kind/description)。L0/L1 |
 | `llmdoc index [--topic t] [--kind k]` | 批量输出文档 front matter 投影(path/description/kind/relations/code.paths)。L2 |
 | `llmdoc show <path...>` | 按路径取正文,多文档合并输出,带预算。L3 |
-| `llmdoc search <query> [--topic] [--kind]` | 词法检索(front matter + 标题 + 正文,BM25 级),返回 path + description + 命中片段 |
+| `llmdoc search <query> [--topic] [--kind]` | 词法检索(front matter + 标题 + 正文,BM25 级);中文查询先分词，零 lexical 召回时降级为 CJK bigram，返回 path + description + 命中片段 |
 | `llmdoc context --files <src...>` | **给 AI 的核心入口**:"我要改这些源码文件,应该先读哪些文档"——逐输入用 `code.paths` 反查 + requires 闭包,并独立报告 `unmappedFiles` |
 
-搜索索引缓存于 `.llmdoc-tmp/cache/`,按 mtime/revision 增量重建,删除可再生。不做 embedding。
+搜索索引缓存于 `.llmdoc-tmp/cache/`,按 mtime/revision 增量重建,删除可再生。不做 embedding。完整短语优先于部分词项；发生 CJK bigram 降级时，文本输出会明确提示，JSON 的 `searchMode` 会暴露实际检索模式。
 
 仓库根可选 `.llmdocignore`(每行一个 minimatch pattern,`#` 注释,`dir/` 自动展开为 `dir/**`):匹配路径不参与 unmapped/dirty 信号,用于本地运行时文件、数据库等非知识面路径。
 
@@ -34,7 +34,7 @@ CLI 是 V3 的 Runtime 实体:所有确定性、可测试、重复出现的工�
 | `llmdoc delta [--scope <topic\|path...>]` | 变更代码 → 受影响文档闭包 + unmapped paths + light/deep 建议信号(见 04) |
 | `llmdoc validate` | 全量校验:front matter schema、kind 合法、禁 index.mdx、层级深度(禁嵌套)、链接/requires 悬空、CodeRef path 存在、`code.paths` 精确路径存在且 glob 至少命中一项、ledger 与文件树一致、体积告警。CI 与写入门控共用 |
 | `llmdoc fingerprint --update <path...|--all>` | 只刷新 revision 的低层台账原语;普通 update 收尾优先用 `commit`/`commit --verified` 保证 validate 与 git 提交闭环 |
-| `llmdoc init-state` | 首次生成 `meta.json` 台账骨架:全部文档 `validatedRevision: null` + 实测 convergence;init/upgrade 场景专用,拒绝覆盖已有台账 |
+| `llmdoc init-state` | 在真实 Git HEAD 上首次生成 `meta.json` 台账骨架:全部文档 `validatedRevision: null` + 实测 convergence;unborn 仓库须先建立首次 commit,且拒绝覆盖已有台账 |
 | `llmdoc commit [-m] [--verified <path...> \| --all] [--no-verify]` | **一体化收尾**:validate 门控 → 可选提交正文写集(不卷入用户 staged 的其他文件)→ 刷新正文改动与 verified-unchanged 文档 → meta 单独小 commit。`--all` 表示全量复核且不能与 `--verified` 同用;无正文改动时可只提交 meta。消灭手工三步曲与 `--amend` 追尾陷阱 |
 
 ### 2.3 Hook 面(webhook 需要做的事全部收敛于此)
@@ -53,7 +53,7 @@ Fail policy:hook 执行失败不阻塞开发;hook 永不写 `llmdoc/`;写命令�
 
 | 命令 | 作用 |
 |---|---|
-| `llmdoc new <path> --kind <k>` | 脚手架:生成带合法 front matter 的空文档 |
+| `llmdoc new <path> --kind <k>` | 脚手架:生成带合法 front matter 的空文档；最近 Git 根尚无 `llmdoc/` 时自动创建，并在缺少 ledger 时提示后续 `init-state` |
 | `llmdoc adopt <path...>` | 无损登记:把已存在的合法 `.mdx` 登记进 `meta.json`(`validatedRevision: null`,不改正文,幂等) |
 | `llmdoc mv <from> <to>` | 重命名/移动:`git mv` + 批量更新引用与 ledger key |
 | `llmdoc prune --report` | growth 报告:当前规模 vs convergence baseline、重复/碎片候选(只报告,收敛动作由 Recorder 做) |

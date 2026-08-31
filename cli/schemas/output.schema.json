@@ -374,6 +374,7 @@
       "additionalProperties": false,
       "required": [
         "query",
+        "searchMode",
         "results",
         "pagination"
       ],
@@ -381,6 +382,13 @@
         "query": {
           "type": "string",
           "minLength": 1
+        },
+        "searchMode": {
+          "type": "string",
+          "enum": [
+            "lexical",
+            "cjk-bigram-fallback"
+          ]
         },
         "results": {
           "type": "array",
@@ -859,12 +867,19 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "created"
+        "created",
+        "next"
       ],
       "properties": {
         "created": {
           "type": "string",
           "minLength": 1
+        },
+        "next": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },

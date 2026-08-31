@@ -12,6 +12,7 @@ code:
     - cli/src/lib/schema.ts
     - cli/src/lib/viewer-state.ts
     - cli/src/commands/validate.ts
+    - cli/src/commands/init-state.ts
     - cli/src/commands/status.ts
     - cli/src/commands/delta.ts
     - cli/src/commands/fingerprint.ts
@@ -19,6 +20,7 @@ code:
     - cli/tests/cli.test.ts
     - cli/tests/viewer-state.test.ts
     - cli/tests/viewer-http.test.ts
+    - cli/tests/cold-start.test.ts
     - cli/schemas/doc-frontmatter.schema.json
     - cli/schemas/meta.schema.json
     - cli/schemas/output.schema.json
@@ -28,9 +30,11 @@ code:
 
 ## Workspace 与文档模型
 
-CLI 只接受最近 Git 根直属的 `llmdoc/`，避免跨仓库误认；没有 Git 边界时才保留初始化场景的向上兼容查找。V3 文档树固定为根 singleton 加一层 topic，路径即文档 ID；不设 `index.mdx`，topic 摘要由 CLI 聚合。`meta.json` 只保存有效性台账，不复制可扫描的树结构。
+除首次 `new` 外，CLI 只接受最近 Git 根直属的已有 `llmdoc/`，避免跨仓库误认；没有 Git 边界时仅兼容查找已有知识目录。V3 文档树固定为根 singleton 加一层 topic，路径即 ID；topic 没有入口文档，`meta.json` 也只保存有效性台账，不复制可扫描结构。
 
-`validate` 的责任是保证 schema、两层结构、引用、代码锚点、realpath 边界与 ledger/文件树一致；`code.paths` 的精确路径必须存在，glob 也必须至少命中一个现有文件，避免陈旧 pattern 静默通过。它只证明结构有效，不判断某个 pattern 是否错误吸附无关文件，或 first-class owner 是否缺失；这些语义问题属于 Routing Gate 与 Context Floor 验收。精确字段集合属于 schema，不在稳定正文重复维护。
+`validate` 保证结构、引用、代码锚点、realpath 边界与 ledger 一致，并拒绝不存在的精确路径或空匹配 glob。它只证明结构有效，不判断 glob 是否吸附无关文件或 first-class owner 是否缺失；这些语义问题属于 Routing Gate 与 Context Floor。
+
+`init-state` 的 baseline 必须锚定真实 HEAD；unborn branch 先创建首次提交。Git、HEAD 或 ledger 前置失败必须给出对应 remedy，不能折叠成模糊错误。
 
 ## Revision 与影响语义
 
@@ -38,7 +42,7 @@ CLI 只接受最近 Git 根直属的 `llmdoc/`，避免跨仓库误认；没有 
 
 `delta` 先用 `code.paths` 找直接受影响文档，再沿 `relations.requires` 反向扩展一跳为 needs-review。未映射路径、反向复核、影响过广、dirty 关联代码或失效 revision 会把建议模式抬到 deep。命中表示必须复核，不表示正文必须变化。
 
-revision 推进前必须确认 git 可推进且目标文档关联实现无 dirty；全量推进还要求所有实现表面 clean。`commit --verified` 让语义仍成立的文档只刷新有效性锚点。
+revision 推进前必须确认 Git 可推进且目标 owner 的关联实现无 dirty；全量推进要求所有实现表面 clean。正文仍成立的 owner 只刷新有效性锚点。
 
 `status` 与 Viewer 共用 repository health 判定：原始 commits-behind 保留为 Git 历史可观测值，知识陈旧度只计其中触碰 implementation surface 的 relevant commit。behind 全为 metadata-only 时仍是 knowledge-clean，不能直接把 `behindHead > 0` 渲染成 stale；无法可靠计算 relevant 数量时必须保持 unknown/degraded，而不是乐观判 fresh。fingerprint 之后由 CLI 自己创建的纯 `llmdoc/meta.json` follow-up 因此不代表知识再次过期，重复收尾应成为 no-op。
 
