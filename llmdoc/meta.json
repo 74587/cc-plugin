@@ -9,19 +9,19 @@
       "validatedRevision": "d5c2ecc1c6de581c4469072274f313b39673ec4b"
     },
     "cli-runtime/state-and-validation.mdx": {
-      "validatedRevision": "d5c2ecc1c6de581c4469072274f313b39673ec4b"
+      "validatedRevision": "9b57dba1d1f05ae503780b3bd0de634a41e93d57"
     },
     "cli-runtime/retrieval-and-mutation.mdx": {
-      "validatedRevision": "d5c2ecc1c6de581c4469072274f313b39673ec4b"
+      "validatedRevision": "9b57dba1d1f05ae503780b3bd0de634a41e93d57"
     },
     "plugin-packaging/claude-and-codex.mdx": {
-      "validatedRevision": "255d8672b5c4de14149324c15a017392b0865488"
+      "validatedRevision": "9b57dba1d1f05ae503780b3bd0de634a41e93d57"
     },
     "plugin-packaging/development-and-release.mdx": {
-      "validatedRevision": "d5c2ecc1c6de581c4469072274f313b39673ec4b"
+      "validatedRevision": "9b57dba1d1f05ae503780b3bd0de634a41e93d57"
     },
     "workflows/init-and-update.mdx": {
-      "validatedRevision": "d5c2ecc1c6de581c4469072274f313b39673ec4b"
+      "validatedRevision": "9b57dba1d1f05ae503780b3bd0de634a41e93d57"
     },
     "workflows/prune-and-upgrade.mdx": {
       "validatedRevision": "d5c2ecc1c6de581c4469072274f313b39673ec4b"
