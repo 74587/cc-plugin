@@ -6,7 +6,7 @@
   },
   "documents": {
     "architecture.mdx": {
-      "validatedRevision": "d5c2ecc1c6de581c4469072274f313b39673ec4b"
+      "validatedRevision": "c06509e1ce1415317cef19ab222d7f2e299eed67"
     },
     "cli-runtime/state-and-validation.mdx": {
       "validatedRevision": "ad51e18f7a0fad995a3da71f003c5ea84336a6db"
@@ -21,7 +21,7 @@
       "validatedRevision": "ad51e18f7a0fad995a3da71f003c5ea84336a6db"
     },
     "workflows/init-and-update.mdx": {
-      "validatedRevision": "9b57dba1d1f05ae503780b3bd0de634a41e93d57"
+      "validatedRevision": "c06509e1ce1415317cef19ab222d7f2e299eed67"
     },
     "workflows/prune-and-upgrade.mdx": {
       "validatedRevision": "ad51e18f7a0fad995a3da71f003c5ea84336a6db"
