@@ -12,6 +12,7 @@ code:
     - cli/src/lib/schema.ts
     - cli/src/lib/viewer-state.ts
     - cli/src/commands/validate.ts
+    - cli/src/commands/init-state.ts
     - cli/src/commands/status.ts
     - cli/src/commands/delta.ts
     - cli/src/commands/fingerprint.ts
@@ -19,6 +20,7 @@ code:
     - cli/tests/cli.test.ts
     - cli/tests/viewer-state.test.ts
     - cli/tests/viewer-http.test.ts
+    - cli/tests/cold-start.test.ts
     - cli/schemas/doc-frontmatter.schema.json
     - cli/schemas/meta.schema.json
     - cli/schemas/output.schema.json
@@ -28,9 +30,11 @@ code:
 
 ## Workspace 与文档模型
 
-CLI 只接受最近 Git 根直属的 `llmdoc/`，避免跨仓库误认；没有 Git 边界时才保留初始化场景的向上兼容查找。V3 文档树固定为根 singleton 加一层 topic，路径即文档 ID；不设 `index.mdx`，topic 摘要由 CLI 聚合。`meta.json` 只保存有效性台账，不复制可扫描的树结构。
+除首次 `new` 这一受控例外外，CLI 只接受最近 Git 根直属的已有 `llmdoc/`，避免跨仓库误认；`new` 可在知识目录尚不存在时锁定最近 Git 根，没有 Git 边界但已有 `llmdoc/` 时才保留兼容查找。V3 文档树固定为根 singleton 加一层 topic，路径即文档 ID；不设 `index.mdx`，topic 摘要由 CLI 聚合。`meta.json` 只保存有效性台账，不复制可扫描的树结构。
 
 `validate` 的责任是保证 schema、两层结构、引用、代码锚点、realpath 边界与 ledger/文件树一致；`code.paths` 的精确路径必须存在，glob 也必须至少命中一个现有文件，避免陈旧 pattern 静默通过。它只证明结构有效，不判断某个 pattern 是否错误吸附无关文件，或 first-class owner 是否缺失；这些语义问题属于 Routing Gate 与 Context Floor 验收。精确字段集合属于 schema，不在稳定正文重复维护。
+
+`init-state` 建立的 baseline 必须锚定真实 HEAD commit；unborn branch 不能合成 revision，必须先创建首次提交。缺少 Git、unborn HEAD、其他 HEAD 失效与 `meta.missing` 都应给出对应的可执行 remedy，而不是把不同前置失败折叠成同一条模糊错误。
 
 ## Revision 与影响语义
 

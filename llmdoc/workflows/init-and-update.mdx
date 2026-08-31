@@ -14,7 +14,9 @@ code:
     - agents/recorder.md
     - cli/src/commands/status.ts
     - cli/src/commands/delta.ts
+    - cli/src/commands/init-state.ts
     - cli/src/commands/fingerprint.ts
+    - cli/tests/cold-start.test.ts
     - skills/llmdoc/references/knowledge-topology.md
     - .agents/skills/llmdoc/references/knowledge-topology.md
 ---
@@ -28,6 +30,8 @@ code:
 `init` 只用于没有有效 V3 知识面的仓库；已有 V3 转 update，legacy 结构只能走显式 upgrade。首次知识面先以稳定职责、authority、failure model 与查询词汇识别 domain，再把它们组织为持久 retrieval topic，最后由 `recorder` 为每个决策簇或风险工作流建立 canonical owner。Package 与目录只是边界证据；root singleton 只承载真正跨 topic 的契约。
 
 目标是最小充分 owner 集，不是源码全量转述或固定文档数量。每个 first-class 子系统都必须在 scratch domain/owner matrix 中归为 documented、intentionally reconstructable 或 gap；no-doc 决定需要可快速恢复的 canonical source 与无隐藏持久语义的证据，未决 gap 会阻止 init success。
+
+首次 bootstrap 在 `init-state` 前必须同时具备已完成的首批文档和真实 HEAD；unborn 仓库先创建一次真实初始提交，不能用工作树状态代替 revision。其后顺序固定为 `init-state` 建立 ledger、`validate` 与 Context Floor 验收、最后 `commit --all` 收尾；跳过或调换这些阶段会留下缺失台账、未验证路由或未闭合 fingerprint。
 
 ## Update 是语义复核
 
