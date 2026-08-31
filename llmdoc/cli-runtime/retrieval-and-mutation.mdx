@@ -1,5 +1,5 @@
 ---
-description: 渐进读取、逐输入 source-owner 路由，以及结构改写和 commit 的安全事务边界。
+description: 渐进读取、CLI 公开英文输出契约，以及结构改写和 commit 的安全事务边界。
 kind: reference
 relations:
   related:
@@ -7,7 +7,17 @@ relations:
 code:
   paths:
     - cli/src/cli.ts
+    - cli/src/lib/doc-shape.ts
+    - cli/src/lib/markdown.ts
     - cli/src/lib/output-schema.ts
+    - cli/src/lib/package-root.ts
+    - cli/src/lib/pagination.ts
+    - cli/src/commands/validate.ts
+    - cli/src/commands/init-state.ts
+    - cli/src/commands/status.ts
+    - cli/src/commands/delta.ts
+    - cli/src/commands/fingerprint.ts
+    - cli/src/commands/hook.ts
     - cli/src/commands/tree.ts
     - cli/src/commands/index.ts
     - cli/src/commands/show.ts
@@ -32,6 +42,7 @@ code:
     - cli/tests/viewer-state.test.ts
     - cli/tests/viewer-http.test.ts
     - cli/tests/viewer-assets.test.ts
+    - cli/tests/cli.test.ts
     - cli/tests/search-cjk.test.ts
     - cli/tests/cold-start.test.ts
     - cli/schemas/output.schema.json
@@ -47,9 +58,17 @@ code:
 
 Viewer 是同一知识面的 loopback 只读投影，不是改写入口。请求只能经过显式路由并命中 workspace 扫描出的 canonical 文档 ID，不能解释为任意文件系统路径；服务端响应边界与客户端 Markdown 清洗必须同时保留，扩展也不得绕过。
 
+## 公开输出语言契约
+
+CLI 自己拥有的固定用户可见文案统一使用英文，包括 help/usage、文本结果与错误、JSON 的 message 类字段、lifecycle hook 输出，以及 Viewer UI 与 HTTP 错误。这个单一语言边界覆盖交互和自动化表面，不能让不同命令或宿主形成各自的本地化分支。
+
+仓库文档正文、front matter 描述、搜索输入与命中片段等用户内容不受此约束，可以继续使用中文或其他语言；中文分词与 CJK fallback 也仍是检索能力的一部分。边界只约束 CLI 固定文案，不改写或翻译被检索的知识内容。
+
 ## 结构改写不变量
 
 所有结构改写都受仓库与 `llmdoc/` realpath 边界约束，拒绝符号链接逃逸和覆盖目标。`new` 是唯一可在缺少 `llmdoc/` 时启动的改写，它锁定最近 Git 根；其他改写要求已有 workspace，失败必须原子回滚且不触碰源码。
+
+startup preload 是指向文档 ID 的持久引用。`mv` 必须在移动正文、重写文档关系与 ledger 的同一事务中改写所有匹配的 preload，并在任一写入失败时连同配置一起回滚；不能留下“移动成功但下一次 validate 才发现配置悬空”的中间状态。
 
 `commit` 是正式收尾边界：先 validate 和 revision/dirty 预检，只提交 `llmdoc/` 写集，再刷新 fingerprint 并单独提交 `meta.json`；已复核但正文未变的 owner 也可纳入 fingerprint。预检失败必须在任何 commit 前 fail-closed，不能卷入用户已 staged 的非 llmdoc 文件，也不得用 amend 合并 meta follow-up。
 

@@ -28,6 +28,8 @@ code:
 
 CLI 命令或输出语义变化必须在同一 change-set 同步 canonical prompt、生成宿主表面、版本元数据、公开文档和 dogfood knowledge；精确文件集合交给自动化。机械校验通过后仍需人工审查宿主 policy、授权边界和公开语义是否一致。
 
+仓库根的 `llmdoc.config.json` 是 startup 配置跨 validate、hook 与结构改写路径的 dogfood，而非仅供 README 展示的样例；startup 契约变更必须让它继续通过真实 workspace 校验。对外发布的 config schema 则以 CLI schema 为 canonical source，网站构建产物必须在 CI 中通过结构等价检查，避免编辑器所取 schema 与运行时校验漂移。
+
 ## Lifecycle hook 发布验证
 
 hook 的发布边界包含宿主 cwd 中的 npm package 解析、发布包的 bin 链接和 CLI 启动，而不只是 `hook` 命令进入后的业务逻辑。发布验证必须从 `hooks/hooks.json` 读取并执行真实 lifecycle 命令，在可见同名 local/`file:` 依赖的消费方环境中确认 alias 仍选择发布 runtime，并验证 SessionStart 的文本与 Stop/PreCompact 的 JSON 契约。静态命令前缀检查、直接运行仓库 `dist` 或只调用内部 hook handler 都不能替代这项验证，因为它们绕过了发生遮蔽的启动层。

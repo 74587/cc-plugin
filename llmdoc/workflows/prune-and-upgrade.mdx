@@ -19,6 +19,8 @@ code:
 
 CLI 的 `prune --report` 只提供规模、重复和碎片等机械信号；没有候选不代表正文知识密度合格。`recorder` 还必须逐段应用 Stable Knowledge Gate，删除可从源码、schema、help、测试或 CI 快速重建的库存，同时保留决策理由、边界、不变量、契约、失败语义和危险工作流。
 
+报告同时列出 startup preload 持久引用，使人工 merge/delete 在动作前看见配置影响面。直接 rename 交给 `mv` 事务性同步；人工合并或删除必须在同一写集中更新或移除受影响的 `llmdoc.config.json` 条目。缺失目标会被 validate 判错并阻止 commit，这是防止悬空启动承诺的故意门控，不应通过跳过配置校验绕开。
+
 收敛不能靠 archive、搬运低价值内容、无脑按时间删除或把无关路径挂到文档维持 coverage。success 要求知识密度或路由实质改善、validate 通过，并且合理的 `code.paths` 仍准确。
 
 当前 convergence 快照没有 prune 后的独立刷新入口，因此规模下降后 growth gate 可能继续显示 above；在 CLI 提供受控刷新能力前，以本次 report 的实际规模和候选为准。该限制消失时应删除这条过渡说明。
