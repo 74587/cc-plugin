@@ -50,42 +50,42 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .name("llmdoc")
-    .description("面向 LLM 的项目知识库 CLI:渐进检索 llmdoc/ 文档,维护 revision 台账")
-    .version(readPackageVersion(), "--version", "输出 CLI 版本")
-    .helpOption("-h, --help", "显示帮助")
-    .helpCommand("help [command]", "显示指定命令的帮助")
-    .showHelpAfterError("(用 --help 查看用法)");
+    .description("Project knowledge CLI for LLMs: progressively retrieve llmdoc/ documents and maintain the revision ledger")
+    .version(readPackageVersion(), "--version", "output the CLI version")
+    .helpOption("-h, --help", "display help")
+    .helpCommand("help [command]", "display help for a command")
+    .showHelpAfterError("(use --help to view usage)");
   program
-    .option("--json", "以 JSON 输出(经 schema 校验)")
-    .option("--cursor <cursor>", "上次输出截断处的游标,从该处继续")
-    .option("--budget <tokens>", "输出 token 预算,超出即截断并返回 cursor", parseInteger)
-    .option("--limit <n>", "最多返回条数", parseInteger);
+    .option("--json", "emit schema-validated JSON")
+    .option("--cursor <cursor>", "continue from a cursor returned by a truncated response")
+    .option("--budget <tokens>", "truncate output at this token budget and return a cursor", parseInteger)
+    .option("--limit <n>", "maximum number of items to return", parseInteger);
   program.addHelpText(
     "after",
     [
       "",
-      "按用途速查:",
-      "  检索(只读)   tree → index / search / context → show",
-      "  状态诊断     status · delta · validate",
-      "  结构改写     new · adopt · mv · fingerprint · init-state · commit",
-      "  维护诊断     prune · upgrade",
-      "  集成         hook · serve",
+      "Quick reference by purpose:",
+      "  Retrieval (read-only)  tree → index / search / context → show",
+      "  State diagnostics      status · delta · validate",
+      "  Structural mutation    new · adopt · mv · fingerprint · init-state · commit",
+      "  Maintenance            prune · upgrade",
+      "  Integration            hook · serve",
       "",
-      "常用示例:",
-      "  llmdoc tree --docs                        全局地图,展开到文档级",
-      "  llmdoc search \"重试策略\" --limit 5         词法检索文档",
-      "  llmdoc context --files src/api/retry.ts   按源码反查应读文档",
-      "  llmdoc show api-client/retry-policy.mdx   读取正文",
-      "  llmdoc commit -m \"docs: ...\"              校验并提交 llmdoc 写集",
+      "Common examples:",
+      "  llmdoc tree --docs                        expand the global map to documents",
+      "  llmdoc search \"retry policy\" --limit 5     search documents lexically",
+      "  llmdoc context --files src/api/retry.ts   map source files to documents to read",
+      "  llmdoc show api-client/retry-policy.mdx   read selected bodies",
+      "  llmdoc commit -m \"docs: ...\"              validate and commit the llmdoc write set",
       "",
-      "所有检索命令支持 --json / --budget / --limit;输出被截断时带 --cursor 继续。"
+      "All retrieval commands support --json / --budget / --limit; use --cursor to continue truncated output."
     ].join("\n")
   );
 
   program
     .command("tree")
-    .description("输出 llmdoc 全局地图(默认停在 topic 层)")
-    .option("--docs", "展开到文档级")
+    .description("output the global llmdoc map (topics by default)")
+    .option("--docs", "expand to document level")
     .action((commandOptions) => {
       const rootDir = findProjectRoot(cwd);
       const result = runTree({ ...globalOptions, ...commandOptions, cwd: rootDir });
@@ -94,9 +94,9 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("index")
-    .description("列出文档元数据索引(不读正文即可判断相关性)")
-    .option("--topic <topic>", "只列指定 topic 下的文档")
-    .option("--kind <kind>", "只列指定类型: architecture | guide | reference")
+    .description("list document metadata without reading bodies")
+    .option("--topic <topic>", "list documents only under this topic")
+    .option("--kind <kind>", "filter by kind: architecture | guide | reference")
     .action((commandOptions) => {
       const rootDir = findProjectRoot(cwd);
       output.push(writeOutput("index", runIndex({ ...globalOptions, ...commandOptions, cwd: rootDir }), globalOptions.json));
@@ -104,8 +104,8 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("show")
-    .description("读取一个或多个文档正文")
-    .argument("<path...>", "llmdoc/ 下的相对路径,如 api-client/retry-policy.mdx")
+    .description("read one or more document bodies")
+    .argument("<path...>", "paths relative to llmdoc/, such as api-client/retry-policy.mdx")
     .action((paths) => {
       const rootDir = findProjectRoot(cwd);
       output.push(writeOutput("show", runShow({ ...globalOptions, cwd: rootDir, paths }), globalOptions.json));
@@ -113,10 +113,10 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("search")
-    .description("按词法检索 llmdoc 文档(自动中文分词，必要时使用 CJK bigram 降级)")
-    .argument("<query>", "检索词")
-    .option("--topic <topic>", "限定 topic")
-    .option("--kind <kind>", "限定类型: architecture | guide | reference")
+    .description("search llmdoc documents lexically (Chinese segmentation with CJK bigram fallback)")
+    .argument("<query>", "search query")
+    .option("--topic <topic>", "limit to a topic")
+    .option("--kind <kind>", "filter by kind: architecture | guide | reference")
     .action((query, commandOptions) => {
       const rootDir = findProjectRoot(cwd);
       output.push(writeOutput("search", runSearch({ ...globalOptions, ...commandOptions, cwd: rootDir, query }), globalOptions.json));
@@ -124,8 +124,8 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("context")
-    .description("按源码文件反查应读文档(含 requires 前置闭包)")
-    .requiredOption("--files <files...>", "源码文件路径,可多个")
+    .description("map source files to documents to read, including the requires closure")
+    .requiredOption("--files <files...>", "one or more source file paths")
     .action((commandOptions) => {
       const rootDir = findProjectRoot(cwd);
       output.push(
@@ -143,7 +143,7 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("validate")
-    .description("校验 llmdoc 结构与引用")
+    .description("validate llmdoc structure and references")
     .action((commandOptions) => {
       const rootDir = findProjectRoot(cwd);
       const result = runValidate({ ...globalOptions, ...commandOptions, cwd: rootDir });
@@ -153,7 +153,7 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("status")
-    .description("查看 baseline、dirty 与增长状态")
+    .description("inspect baseline, dirty, and growth state")
     .action((commandOptions) => {
       const rootDir = findProjectRoot(cwd);
       output.push(writeOutput("status", runStatus({ ...globalOptions, ...commandOptions, cwd: rootDir }), globalOptions.json));
@@ -161,8 +161,8 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("delta")
-    .description("查看代码变化对应的文档影响面(决定 update 走 light 还是 deep)")
-    .option("--scope <scope...>", "限定参与比对的代码路径")
+    .description("inspect document impacts from code changes and choose light or deep update mode")
+    .option("--scope <scope...>", "limit comparison to selected topics or documents")
     .action((commandOptions) => {
       const rootDir = findProjectRoot(cwd);
       output.push(writeOutput("delta", runDelta({ ...globalOptions, ...commandOptions, cwd: rootDir }), globalOptions.json));
@@ -170,9 +170,9 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("fingerprint")
-    .description("把文档 validatedRevision 刷新到当前 HEAD")
-    .option("--update <path...>", "只刷新指定文档")
-    .option("--all", "刷新全部文档并推进 baseline")
+    .description("refresh document validatedRevision values to the current HEAD")
+    .option("--update <path...>", "refresh only selected documents")
+    .option("--all", "refresh every document and advance the baseline")
     .action((commandOptions) => {
       const rootDir = findProjectRoot(cwd);
       output.push(
@@ -191,10 +191,10 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("init-state")
-    .description("首次生成 llmdoc/meta.json 台账骨架(validatedRevision 全部为 null)")
+    .description("create the initial llmdoc/meta.json ledger with null validatedRevision values")
     .addHelpText(
       "after",
-      "\n前置: Git HEAD 必须已有真实 commit。生成后先 validate，再用 commit --all 完成 bootstrap。"
+      "\nPrerequisite: Git HEAD must reference a real commit. Then run validate and finish bootstrap with commit --all."
     )
     .action(async () => {
       const { runInitState } = await import("./commands/init-state.js");
@@ -204,11 +204,11 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("commit")
-    .description("一体化收尾:validate 门控 → 可选提交正文 → 刷新 changed/verified revision → meta 小 commit")
+    .description("finalize atomically: validate, optionally commit prose, refresh revisions, and commit metadata")
     .option("-m, --message <message>", "docs commit message")
-    .option("--all", "fingerprint 全部文档并推进 baseline")
-    .option("--verified <paths...>", "正文复核后无需改写,刷新指定文档的 validatedRevision")
-    .option("--no-verify", "透传 git commit --no-verify(husky 等重钩子仓库)")
+    .option("--all", "fingerprint every document and advance the baseline")
+    .option("--verified <paths...>", "refresh validatedRevision for reviewed documents whose bodies did not change")
+    .option("--no-verify", "pass --no-verify through to git commit")
     .action(async (commandOptions) => {
       const { runCommit } = await import("./commands/commit.js");
       const rootDir = findProjectRoot(cwd);
@@ -230,13 +230,13 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("new")
-    .description("在 llmdoc/ 下生成文档脚手架")
-    .argument("<path>", "目标相对路径,如 api-client/retry-policy.mdx")
-    .requiredOption("--kind <kind>", "文档类型: architecture | guide | reference")
-    .option("--description <description>", "front matter 一句话描述")
+    .description("scaffold a document under llmdoc/")
+    .argument("<path>", "target path, such as api-client/retry-policy.mdx")
+    .requiredOption("--kind <kind>", "document kind: architecture | guide | reference")
+    .option("--description <description>", "one-line front matter description")
     .addHelpText(
       "after",
-      "\n首次创建时会自动建立 llmdoc/；完成初始文档后运行 init-state → validate → commit --all。"
+      "\nThe first document creates llmdoc/ automatically. Finish bootstrap with init-state → validate → commit --all."
     )
     .action((targetPath, commandOptions) => {
       output.push(
@@ -256,8 +256,8 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("adopt")
-    .description("无损登记已存在的 .mdx 到 meta.json(validatedRevision: null,不改正文,幂等)")
-    .argument("<path...>", "已存在的 llmdoc/ 下相对路径,可多个")
+    .description("register existing .mdx documents in meta.json without rewriting them")
+    .argument("<path...>", "one or more existing paths under llmdoc/")
     .action(async (paths) => {
       const { runAdopt } = await import("./commands/adopt.js");
       const rootDir = findProjectRoot(cwd);
@@ -266,9 +266,9 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("mv")
-    .description("移动/重命名文档或整个 topic,并重写内部引用")
-    .argument("<from>", "源路径")
-    .argument("<to>", "目标路径")
+    .description("move or rename a document or topic and rewrite internal references")
+    .argument("<from>", "source path")
+    .argument("<to>", "target path")
     .action((from, to) => {
       const rootDir = findProjectRoot(cwd);
       output.push(writeOutput("mv", runMove({ ...globalOptions, cwd: rootDir, from, to }), globalOptions.json));
@@ -276,8 +276,8 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("prune")
-    .description("输出只读收敛报告(增长趋势、重复候选、小文档合并候选)")
-    .option("--report", "输出只读收敛报告")
+    .description("output a read-only convergence report")
+    .option("--report", "output the read-only report")
     .action((commandOptions) => {
       const rootDir = findProjectRoot(cwd);
       output.push(writeOutput("prune", runPrune({ ...globalOptions, cwd: rootDir, report: commandOptions.report }), globalOptions.json));
@@ -285,31 +285,31 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("upgrade")
-    .description("盘点 legacy/V2 到 V3 的迁移需求")
+    .description("inventory legacy/V2 to V3 migration needs")
     .action(async (commandOptions) => {
       const { runUpgrade } = await import("./commands/upgrade.js");
       const rootDir = findProjectRootOrNull(cwd) ?? cwd;
       output.push(writeOutput("upgrade", await runUpgrade({ ...globalOptions, ...commandOptions, cwd: rootDir }), globalOptions.json));
     });
 
-  const hookCommand = program.command("hook").description("供编辑器/Agent hooks 调用的只读信号(异常时 fail-open)");
+  const hookCommand = program.command("hook").description("read-only, fail-open signals for editor and Agent hooks");
   hookCommand
     .command("session-start")
-    .description("输出 SessionStart 短状态信号")
+    .description("output SessionStart state and apply optional llmdoc.config.json startup config")
     .action(() => {
       const rootDir = findProjectRootOrNull(cwd) ?? cwd;
       output.push(runHook({ cwd: rootDir, mode: "session-start", stdin }));
     });
   hookCommand
     .command("stop")
-    .description("输出 Stop hook JSON 提醒")
+    .description("output the Stop hook JSON reminder")
     .action(() => {
       const rootDir = findProjectRootOrNull(cwd) ?? cwd;
       output.push(parseAndValidateJsonString("hook", runHook({ cwd: rootDir, mode: "stop", stdin })));
     });
   hookCommand
     .command("compact")
-    .description("输出 PreCompact hook JSON 指令")
+    .description("output the PreCompact hook JSON instruction")
     .action(() => {
       const rootDir = findProjectRootOrNull(cwd) ?? cwd;
       output.push(parseAndValidateJsonString("hook", runHook({ cwd: rootDir, mode: "compact", stdin })));
@@ -317,8 +317,8 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("serve")
-    .description("启动本地 Web Viewer(HTTP 服务,浏览文档结构与关联,Ctrl-C 退出)")
-    .option("--port <port>", "监听端口", parseInteger)
+    .description("start the local Web Viewer; press Ctrl-C to stop")
+    .option("--port <port>", "listening port", parseInteger)
     .action(async (commandOptions) => {
       const { runServe } = await import("./commands/serve.js");
       const rootDir = findProjectRoot(cwd);
@@ -357,7 +357,7 @@ function writeOutput(schemaName: OutputSchemaName, value: unknown, expectJson = 
 function parseInteger(input: string): number {
   const value = Number.parseInt(input, 10);
   if (Number.isNaN(value) || value <= 0) {
-    throw new CliError(`非法整数: ${input}`);
+    throw new CliError(`Invalid integer: ${input}`);
   }
   return value;
 }

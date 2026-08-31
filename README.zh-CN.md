@@ -130,6 +130,44 @@ npx -y @tokenroll/llmdoc serve
 `npx -y @tokenroll/llmdoc help <command>` 为准。`status` 与 `delta`
 用于评估有效性和影响面，不是检索步骤。
 
+### 启动上下文配置
+
+启用 lifecycle hooks 的仓库可以在 llmdoc workspace 根目录增加可选的
+`llmdoc.config.json`；在 Git 仓库中，它就是拥有 `llmdoc/` 的最近 Git 根：
+
+```json
+{
+  "$schema": "https://llmdoc.tokenroll.ai/schemas/config.schema.json",
+  "schema": "llmdoc.config/v1",
+  "startup": {
+    "remindSkill": true,
+    "preload": [
+      "architecture.mdx",
+      "plugin-packaging/claude-and-codex.mdx"
+    ]
+  }
+}
+```
+
+- `remindSkill` 控制 SessionStart 是否注入最小操作守则：加载 llmdoc skill、
+  经过 CLI retrieval gate，并委派给 llmdoc roles。默认值为 `true`；显式设为
+  `false` 才关闭。
+- `preload` 按顺序列出精确文档 ID，可以带或不带 `llmdoc/` 前缀。冷启动会按
+  声明顺序直接注入完整正文，llmdoc 不设置字符或 token 预算。只有最终完成标记
+  可见时才表示宿主提供了完整 preload；若标记缺失，只对缺少的正文执行 `show`。
+- compact 重入只列出配置的文档 ID，不会再次注入完整正文；优先延续
+  `LLMDOC_STATE`，确有需要时才重新读取。
+- `validate` 会报告非法配置、不存在的路径与路径越界；规范化后指向同一文档的
+  别名会去重并产生 warning。hook 保持 fail-open：JSON/schema 无法读取时使用
+  默认提醒；如果只有 preload 项无效，合法的 `remindSkill` 选择仍会保留。
+- `mv` 会事务性重写匹配的 preload 路径；`prune --report` 会列出手工合并或删除
+  文档前必须同步的 preload 引用。
+
+没有该文件时，SessionStart 输出状态和默认操作守则，但不预载文档。
+
+CLI 自身的固定界面文案全部使用英文，包括 help、诊断、hook message 与本地
+Viewer；中文查询与仓库文档正文仍完整支持，并保持原文返回。
+
 ## 知识与安全边界
 
 - 稳定知识属于 tracked `llmdoc/`；调查、缓存和反思候选属于本地 `.llmdoc-tmp/`。
@@ -144,8 +182,9 @@ npx -y @tokenroll/llmdoc serve
   安全的经验候选，`recorder` 是唯一写入 tracked knowledge 的角色。
 - 每条 workflow 都只授权知识维护，不授权源码编辑。结构写入会经过校验，并被限制在
   仓库的 `llmdoc/` 边界内。
-- Hooks 通过 scoped CLI 发出只读、fail-open 的信号。启用前先审查 hooks，并
-  确认插件来源可信。
+- Hooks 通过 scoped CLI 发出只读、fail-open 的信号。SessionStart 还会注入
+  可配置的最小操作守则，因此项目无需在 CLAUDE.md/AGENTS.md 重复该引导。
+  启用前先审查 hooks，并确认插件来源可信。
 - `delta` 命中表示“复核这条结论”，不是“改写这篇文档”。保留决策及理由、
   边界、不变量、契约和非显然失败语义；可重建事实应留在源码、schema、help、
   测试或生成配置中。

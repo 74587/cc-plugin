@@ -727,6 +727,7 @@
         "status",
         "writable",
         "growth",
+        "startupPreloads",
         "duplicateCandidates",
         "mergeCandidates"
       ],
@@ -741,6 +742,13 @@
         },
         "growth": {
           "$ref": "#/$defs/growth"
+        },
+        "startupPreloads": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "duplicateCandidates": {
           "type": "array",
@@ -912,6 +920,7 @@
       "additionalProperties": false,
       "required": [
         "moved",
+        "rewrittenConfig",
         "rewrittenDocuments"
       ],
       "properties": {
@@ -939,6 +948,9 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "rewrittenConfig": {
+          "type": "boolean"
         }
       }
     },

@@ -62,7 +62,7 @@ describe("cold-start workflow", () => {
 
     const unborn = await runCli(["init-state"], rootDir);
     expect(unborn.exitCode).toBe(1);
-    expect(unborn.stdout).toContain("HEAD 尚无 commit");
+    expect(unborn.stdout).toContain("HEAD has no commit");
     expect(unborn.stdout).toContain("git commit --allow-empty");
 
     commitEmpty(rootDir);

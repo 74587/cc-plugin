@@ -44,11 +44,11 @@ export async function runUpgrade(options: UpgradeOptions): Promise<unknown> {
 function inspectMissingLlmdoc(): UpgradeReport {
   return {
     status: "no_change",
-    summary: "当前仓库不存在 llmdoc/，没有可升级的 V2/V3 知识面。",
+    summary: "The repository has no llmdoc/ directory and no V2/V3 knowledge surface to upgrade.",
     legacyPaths: [],
     targetStructure: [],
     requiresRecorderSemanticMigration: false,
-    notes: ["如需首次建立知识面，请走 init，而不是 upgrade。"]
+    notes: ["Use init, not upgrade, to create the first knowledge surface."]
   };
 }
 
@@ -72,9 +72,9 @@ function inspectLlmdocDirectory(llmdocDir: string): UpgradeReport {
       if (errors.length > 0) {
         return {
           status: "dry_run",
-          summary: "检测到部分 V3 结构，但当前知识面未通过 V3 校验。",
+          summary: "A partial V3 structure was detected, but the current knowledge surface failed V3 validation.",
           legacyPaths: [],
-          targetStructure: ["修复现有 V3 结构错误后再判断是否需要 upgrade"],
+          targetStructure: ["Repair the existing V3 structure before deciding whether upgrade is needed"],
           requiresRecorderSemanticMigration: false,
           notes: errors.slice(0, 5).map((issue) => `${issue.path ?? "unknown"}: ${issue.message}`)
         };
@@ -82,43 +82,43 @@ function inspectLlmdocDirectory(llmdocDir: string): UpgradeReport {
     } catch (error) {
       return {
         status: "dry_run",
-        summary: "检测到部分 V3 结构，但当前知识面无法稳定装载。",
+        summary: "A partial V3 structure was detected, but the current knowledge surface cannot be loaded reliably.",
         legacyPaths: [],
-        targetStructure: ["修复现有 V3 结构错误后再判断是否需要 upgrade"],
+        targetStructure: ["Repair the existing V3 structure before deciding whether upgrade is needed"],
         requiresRecorderSemanticMigration: false,
         notes: [(error as Error).message]
       };
     }
     return {
       status: "no_change",
-      summary: "检测到现有知识面已经是 V3 结构，无需 upgrade。",
+      summary: "The existing knowledge surface is already V3; no upgrade is needed.",
       legacyPaths: [],
       targetStructure: [],
       requiresRecorderSemanticMigration: false,
-      notes: ["upgrade 当前只输出盘点，不会改写 V3 知识。"]
+      notes: ["upgrade currently reports an inventory only and does not rewrite V3 knowledge."]
     };
   }
 
   if (legacyPaths.length === 0 && !hasV3Meta && !hasMdx) {
     return {
       status: "dry_run",
-      summary: "检测到 llmdoc/ 目录，但没有明确的 V2 或 V3 结构特征。",
+      summary: "An llmdoc/ directory was found, but it has no definitive V2 or V3 structure markers.",
       legacyPaths: [],
-      targetStructure: ["llmdoc/meta.json", "llmdoc/architecture.mdx", "llmdoc/<topic>/*.mdx (纯目录,无 index.mdx 入口节点)"],
+      targetStructure: ["llmdoc/meta.json", "llmdoc/architecture.mdx", "llmdoc/<topic>/*.mdx (plain directories, no index.mdx entry nodes)"],
       requiresRecorderSemanticMigration: false,
-      notes: ["需要人工确认该目录是否为遗留知识面。"]
+      notes: ["A human must confirm whether this directory is a legacy knowledge surface."]
     };
   }
 
   return {
     status: "dry_run",
-    summary: "检测到 legacy/V2 结构，需要 Recorder 参与语义迁移到 V3。",
+    summary: "A legacy/V2 structure was detected; Recorder must perform the semantic migration to V3.",
     legacyPaths,
-    targetStructure: ["llmdoc/meta.json", "llmdoc/architecture.mdx", "llmdoc/<topic>/*.mdx (纯目录,无 index.mdx 入口节点)"],
+    targetStructure: ["llmdoc/meta.json", "llmdoc/architecture.mdx", "llmdoc/<topic>/*.mdx (plain directories, no index.mdx entry nodes)"],
     requiresRecorderSemanticMigration: true,
     notes: [
-      hasV3Meta ? "存在部分 V3 迹象，但 legacy 结构仍在，需要整理边界后再迁移。" : "未发现完整 V3 ledger，需要生成新的 meta.json baseline。",
-      legacyPaths.includes("state/sync.md") ? "state/sync.md 需要迁移为 meta.json baseline.revision。" : "未发现 state/sync.md watermark。"
+      hasV3Meta ? "Some V3 markers exist, but legacy structure remains; reconcile the boundary before migration." : "No complete V3 ledger was found; create a new meta.json baseline.",
+      legacyPaths.includes("state/sync.md") ? "Migrate state/sync.md to meta.json baseline.revision." : "No state/sync.md watermark was found."
     ]
   };
 }

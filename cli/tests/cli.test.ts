@@ -115,7 +115,7 @@ describe("llmdoc cli", () => {
     const result = await runCli(["show", "escape/secret.mdx"], rootDir);
 
     expect(result.exitCode).toBe(1);
-    expect(result.stdout).toContain("文档不存在");
+    expect(result.stdout).toContain("Document does not exist");
   });
 
   test("workspace loading rejects an llmdoc root symlink that escapes the repository", async () => {
@@ -128,7 +128,7 @@ describe("llmdoc cli", () => {
 
     const result = await runCli(["tree"], rootDir);
     expect(result.exitCode).toBe(1);
-    expect(result.stdout).toContain("符号链接逃逸");
+    expect(result.stdout).toContain("through a symlink");
   });
 
   test("context validates file inputs and paginates instead of silently truncating", async () => {
@@ -139,7 +139,7 @@ describe("llmdoc cli", () => {
 
     const invalid = await runCli(["context", "--files", "../outside.ts"], rootDir);
     expect(invalid.exitCode).toBe(1);
-    expect(invalid.stdout).toContain("路径必须是仓库内规范化相对路径");
+    expect(invalid.stdout).toContain("normalized repository-relative path");
   });
 
   test("context reports mapped and unmapped inputs independently", async () => {
@@ -234,7 +234,7 @@ code:
     const malformedCursor = Buffer.from(JSON.stringify({ offset: "0" })).toString("base64url");
     const invalid = await runCli(["index", "--cursor", malformedCursor], rootDir);
     expect(invalid.exitCode).toBe(1);
-    expect(invalid.stdout).toContain("cursor 非法");
+    expect(invalid.stdout).toContain("cursor is invalid");
   });
 
   test("new scaffolds a document under llmdoc", async () => {
@@ -256,32 +256,48 @@ code:
 
     const indexName = await runCli(["new", "fresh-topic/index.mdx", "--kind", "guide"], rootDir);
     expect(indexName.exitCode).toBe(1);
-    expect(indexName.stdout).toContain("不使用 index.mdx");
+    expect(indexName.stdout).toContain("does not use index.mdx");
 
     const invalidKind = await runCli(["new", "another.mdx", "--kind", "index"], rootDir);
     expect(invalidKind.exitCode).toBe(1);
-    expect(invalidKind.stdout).toContain("非法 kind");
+    expect(invalidKind.stdout).toContain("Invalid kind");
 
     const nested = await runCli(["new", "topic/nested/file.mdx", "--kind", "guide"], rootDir);
     expect(nested.exitCode).toBe(1);
-    expect(nested.stdout).toContain("两层");
+    expect(nested.stdout).toContain("topic/file depth");
 
     const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), "outside-"));
     fs.symlinkSync(outsideDir, path.join(rootDir, "llmdoc", "escape-topic"));
     const escaped = await runCli(["new", "escape-topic/file.mdx", "--kind", "guide"], rootDir);
     expect(escaped.exitCode).toBe(1);
-    expect(escaped.stdout).toContain("逃逸");
+    expect(escaped.stdout).toContain("escapes the repository");
   });
 
   test("mv uses git move and rewrites links plus meta ledger", async () => {
     const rootDir = createFixture();
+    writeRepoFile(
+      rootDir,
+      "llmdoc.config.json",
+      `${JSON.stringify(
+        {
+          schema: "llmdoc.config/v1",
+          startup: {
+            remindSkill: false,
+            preload: ["architecture.mdx", "llmdoc/api-client/retry-policy.mdx"]
+          }
+        },
+        null,
+        2
+      )}\n`
+    );
     fs.appendFileSync(
       path.join(rootDir, "llmdoc", "api-client", "overview.mdx"),
       "\n[query link](./retry-policy.mdx?view=full#anchor)\n\n`[inline example](./retry-policy.mdx)`\n\n```md\n[fenced example](./retry-policy.mdx)\n```\n"
     );
-    const result = await runCli(["mv", "api-client/retry-policy.mdx", "api-client/retry-strategy.mdx"], rootDir);
+    const result = await runCli(["mv", "api-client/retry-policy.mdx", "api-client/retry-strategy.mdx", "--json"], rootDir);
 
     expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ rewrittenConfig: true });
     expect(fs.existsSync(path.join(rootDir, "llmdoc", "api-client", "retry-strategy.mdx"))).toBe(true);
     expect(fs.existsSync(path.join(rootDir, "llmdoc", "api-client", "retry-policy.mdx"))).toBe(false);
 
@@ -296,6 +312,16 @@ code:
     };
     expect(meta.documents["api-client/retry-strategy.mdx"]).toBeTruthy();
     expect(meta.documents["api-client/retry-policy.mdx"]).toBeUndefined();
+
+    const config = JSON.parse(fs.readFileSync(path.join(rootDir, "llmdoc.config.json"), "utf8")) as {
+      startup: { preload: string[] };
+    };
+    expect(config.startup.preload).toEqual(["architecture.mdx", "llmdoc/api-client/retry-strategy.mdx"]);
+
+    const validate = await runCli(["validate"], rootDir);
+    expect(validate.exitCode).toBe(0);
+    const commit = await runCli(["commit", "-m", "docs: move retry policy"], rootDir);
+    expect(commit.exitCode).toBe(0);
   });
 
   test("mv rejects invalid targets before git mv runs", async () => {
@@ -306,7 +332,7 @@ code:
 
     const wrongIndex = await runCli(["mv", "api-client/retry-policy.mdx", "api-client/index.mdx"], rootDir);
     expect(wrongIndex.exitCode).toBe(1);
-    expect(wrongIndex.stdout).toContain("不使用 index.mdx");
+    expect(wrongIndex.stdout).toContain("does not use index.mdx");
     expect(fs.existsSync(path.join(rootDir, "llmdoc", "api-client", "retry-policy.mdx"))).toBe(true);
 
     const metaMove = await runCli(["mv", "meta.json", "meta2.json"], rootDir);
@@ -320,7 +346,7 @@ code:
 
     const existingTarget = await runCli(["mv", "api-client/error-model.mdx", "api-client/overview.mdx"], rootDir);
     expect(existingTarget.exitCode).toBe(1);
-    expect(existingTarget.stdout).toContain("目标已存在");
+    expect(existingTarget.stdout).toContain("Target already exists");
   });
 
   test("status and delta reflect committed, dirty, unmapped, and scope-aware git state", async () => {
@@ -393,8 +419,8 @@ code:
       impacted: Array<{ path: string; changedCommittedPaths: string[]; dirtyPaths: string[] }>;
     };
     expect(deltaJson.suggestedMode).toBe("deep");
-    expect(deltaJson.reasons.some((reason) => reason.includes("缺少 validatedRevision"))).toBe(true);
-    expect(deltaJson.reasons.some((reason) => reason.includes("不存在于当前 git 历史"))).toBe(true);
+    expect(deltaJson.reasons.some((reason) => reason.includes("has no validatedRevision"))).toBe(true);
+    expect(deltaJson.reasons.some((reason) => reason.includes("does not exist in current Git history"))).toBe(true);
     expect(deltaJson.impacted.some((item) => item.path === "llmdoc/api-client/retry-policy.mdx")).toBe(true);
     expect(deltaJson.impacted.some((item) => item.path === "llmdoc/api-client/error-model.mdx")).toBe(true);
   });
@@ -447,12 +473,17 @@ code:
     const sessionStart = await runCli(["hook", "session-start"], rootDir, JSON.stringify({ source: "compact" }));
     expect(sessionStart.exitCode).toBe(0);
     expect(sessionStart.stdout).toContain("compact re-entry");
+    expect(sessionStart.stdout).toContain("llmdoc skill");
+    expect(sessionStart.stdout).toContain("investigator");
+    expect(sessionStart.stdout).toContain("/llmdoc:update");
+    expect(sessionStart.stdout).not.toMatch(/[\p{Script=Han}]/u);
 
     const stop = await runCli(["hook", "stop"], rootDir);
     const stopJson = JSON.parse(stop.stdout) as { continue: boolean; systemMessage?: string };
     expect(stop.exitCode).toBe(0);
     expect(Object.keys(stopJson).every((key) => key === "continue" || key === "systemMessage")).toBe(true);
     expect(stopJson.continue).toBe(true);
+    expect(stop.stdout).not.toMatch(/[\p{Script=Han}]/u);
 
     const compact = await runCli(["hook", "compact"], rootDir);
     const compactJson = JSON.parse(compact.stdout) as { continue: boolean; systemMessage?: string };
@@ -460,11 +491,185 @@ code:
     expect(compactJson.continue).toBe(true);
     expect(compactJson.systemMessage).toContain("LLMDOC_STATE");
     expect(compactJson.systemMessage).toContain("lesson_candidates");
+    expect(compact.stdout).not.toMatch(/[\p{Script=Han}]/u);
 
     removeGitDirectory(rootDir);
     const degradedStop = await runCli(["hook", "stop"], rootDir);
     expect(degradedStop.exitCode).toBe(0);
     expect(() => JSON.parse(degradedStop.stdout)).not.toThrow();
+  });
+
+  test("session-start follows startup config for skill reminders and direct document preload", async () => {
+    const rootDir = createFixture();
+    writeRepoFile(
+      rootDir,
+      "llmdoc.config.json",
+      `${JSON.stringify(
+        {
+          schema: "llmdoc.config/v1",
+          startup: {
+            remindSkill: true,
+            preload: ["architecture.mdx", "llmdoc/api-client/error-model.mdx"]
+          }
+        },
+        null,
+        2
+      )}\n`
+    );
+
+    const validate = await runCli(["validate"], rootDir);
+    expect(validate.exitCode).toBe(0);
+
+    const sessionStart = await runCli(["hook", "session-start"], rootDir);
+    expect(sessionStart.exitCode).toBe(0);
+    expect(sessionStart.stdout).toContain("Operating guidance:");
+    expect(sessionStart.stdout).toContain("llmdoc skill");
+    expect(sessionStart.stdout).toContain("investigator");
+    expect(sessionStart.stdout).toContain("startup preload begins (2 document(s))");
+    expect(sessionStart.stdout).toContain("do not need another search/show");
+    expect(sessionStart.stdout).toContain("=== llmdoc/architecture.mdx [architecture] (startup preload) ===");
+    expect(sessionStart.stdout).toContain("=== llmdoc/api-client/error-model.mdx [reference] (startup preload) ===");
+    expect(sessionStart.stdout).toContain("# 错误模型");
+    expect(sessionStart.stdout).toContain("=== llmdoc startup preload complete ===");
+
+    const compactReentry = await runCli(["hook", "session-start"], rootDir, JSON.stringify({ source: "compact" }));
+    expect(compactReentry.stdout).toContain("compact re-entry");
+    expect(compactReentry.stdout).toContain("startup preload bodies were not re-injected after compaction");
+    expect(compactReentry.stdout).toContain("llmdoc/api-client/error-model.mdx");
+    expect(compactReentry.stdout).not.toContain("# 错误模型");
+    expect(compactReentry.stdout).not.toContain("startup preload complete");
+
+    const status = await runCli(["--json", "status"], rootDir);
+    const statusJson = JSON.parse(status.stdout) as { unmapped: { dirty: string[] } };
+    expect(statusJson.unmapped.dirty).not.toContain("llmdoc.config.json");
+
+    commitAll(rootDir, "configure llmdoc startup context");
+    const committedStatus = await runCli(["--json", "status"], rootDir);
+    const committedStatusJson = JSON.parse(committedStatus.stdout) as { relevantCommitsBehindHead: number };
+    expect(committedStatusJson.relevantCommitsBehindHead).toBe(0);
+    const configOnlySessionStart = await runCli(["hook", "session-start"], rootDir);
+    expect(configOnlySessionStart.stdout).toContain("documents have no actionable impacts");
+    expect(configOnlySessionStart.stdout).not.toContain("behind HEAD");
+  });
+
+  test("startup config can keep the skill reminder disabled", async () => {
+    const rootDir = createFixture();
+    writeRepoFile(
+      rootDir,
+      "llmdoc.config.json",
+      `${JSON.stringify(
+        {
+          schema: "llmdoc.config/v1",
+          startup: { remindSkill: false, preload: ["api-client/error-model.mdx"] }
+        },
+        null,
+        2
+      )}\n`
+    );
+
+    const sessionStart = await runCli(["hook", "session-start"], rootDir);
+    expect(sessionStart.stdout).not.toContain("Operating guidance:");
+    expect(sessionStart.stdout).not.toContain("llmdoc skill");
+    expect(sessionStart.stdout).toContain("# 错误模型");
+    expect(sessionStart.stdout).toContain("startup preload complete");
+  });
+
+  test("validate rejects invalid startup config while session-start stays fail-open", async () => {
+    const rootDir = createFixture();
+    writeRepoFile(
+      rootDir,
+      "llmdoc.config.json",
+      `${JSON.stringify(
+        {
+          schema: "llmdoc.config/v1",
+          startup: { remindSkill: false, preload: ["api-client/missing.mdx"] }
+        },
+        null,
+        2
+      )}\n`
+    );
+
+    const validate = await runCli(["validate"], rootDir);
+    expect(validate.exitCode).toBe(1);
+    expect(validate.stdout).toContain("config.startup.preload.missing");
+    expect(validate.stdout).not.toMatch(/[\p{Script=Han}]/u);
+
+    const sessionStart = await runCli(["hook", "session-start"], rootDir);
+    expect(sessionStart.exitCode).toBe(0);
+    expect(sessionStart.stdout).toContain("invalid startup.preload entries");
+    expect(sessionStart.stdout).toContain("valid remindSkill preference remained applied");
+    expect(sessionStart.stdout).not.toContain("Operating guidance:");
+    expect(sessionStart.stdout).not.toContain("startup preload begins");
+
+    const invalidSchemaRoot = createFixture();
+    writeRepoFile(
+      invalidSchemaRoot,
+      "llmdoc.config.json",
+      `${JSON.stringify(
+        {
+          schema: "llmdoc.config/v0",
+          startup: { remindSkill: false, preload: ["architecture.mdx"] }
+        },
+        null,
+        2
+      )}\n`
+    );
+    const invalidSchemaSession = await runCli(["hook", "session-start"], invalidSchemaRoot);
+    expect(invalidSchemaSession.stdout).toContain("llmdoc.config.json could not be applied");
+    expect(invalidSchemaSession.stdout).toContain("default skill reminder remains active");
+    expect(invalidSchemaSession.stdout).toContain("Operating guidance:");
+    expect(invalidSchemaSession.stdout).not.toContain("startup preload begins");
+  });
+
+  test("startup config deduplicates normalized preload aliases with a warning", async () => {
+    const rootDir = createFixture();
+    writeRepoFile(
+      rootDir,
+      "llmdoc.config.json",
+      `${JSON.stringify(
+        {
+          schema: "llmdoc.config/v1",
+          startup: { remindSkill: false, preload: ["architecture.mdx", "llmdoc/architecture.mdx"] }
+        },
+        null,
+        2
+      )}\n`
+    );
+
+    const validate = await runCli(["validate"], rootDir);
+    expect(validate.exitCode).toBe(0);
+    expect(validate.stdout).toContain("config.startup.preload.duplicate");
+
+    const sessionStart = await runCli(["hook", "session-start"], rootDir);
+    expect(sessionStart.stdout).not.toContain("Operating guidance:");
+    expect(sessionStart.stdout).toContain("normalized duplicate startup.preload entries were ignored");
+    expect(sessionStart.stdout.match(/=== llmdoc\/architecture\.mdx \[architecture\] \(startup preload\) ===/g)).toHaveLength(1);
+  });
+
+  test("startup preload has no character or token budget", async () => {
+    const rootDir = createFixture();
+    const marker = "UNBOUNDED_STARTUP_CONTEXT_END";
+    fs.appendFileSync(
+      path.join(rootDir, "llmdoc", "architecture.mdx"),
+      `\n${"large startup context ".repeat(1_000)}${marker}\n`
+    );
+    writeRepoFile(
+      rootDir,
+      "llmdoc.config.json",
+      `${JSON.stringify(
+        { schema: "llmdoc.config/v1", startup: { remindSkill: false, preload: ["architecture.mdx"] } },
+        null,
+        2
+      )}\n`
+    );
+
+    const validate = await runCli(["validate"], rootDir);
+    expect(validate.exitCode).toBe(0);
+
+    const sessionStart = await runCli(["hook", "session-start"], rootDir);
+    expect(sessionStart.exitCode).toBe(0);
+    expect(sessionStart.stdout).toContain(marker);
+    expect(sessionStart.stdout).toContain("=== llmdoc startup preload complete ===");
   });
 
   test("llmdoc and tmp-only changes do not become unmapped update signals", async () => {
@@ -497,8 +702,8 @@ code:
 
     const sessionStart = await runCli(["hook", "session-start"], rootDir);
     expect(sessionStart.exitCode).toBe(0);
-    expect(sessionStart.stdout).toContain("文档无待处理影响");
-    expect(sessionStart.stdout).not.toContain("落后 HEAD");
+    expect(sessionStart.stdout).toContain("documents have no actionable impacts");
+    expect(sessionStart.stdout).not.toContain("behind HEAD");
 
     const stop = await runCli(["hook", "stop"], rootDir);
     const stopJson = JSON.parse(stop.stdout) as { continue: boolean; systemMessage?: string };
@@ -514,13 +719,13 @@ code:
 
     const sessionStart = await runCli(["hook", "session-start"], rootDir);
     expect(sessionStart.exitCode).toBe(0);
-    expect(sessionStart.stdout).toContain("待处理反思候选 2 个");
+    expect(sessionStart.stdout).toContain("2 pending reflection candidate(s)");
 
     const stop = await runCli(["hook", "stop"], rootDir);
     const stopJson = JSON.parse(stop.stdout) as { continue: boolean; systemMessage?: string };
     expect(stop.exitCode).toBe(0);
     expect(stopJson.continue).toBe(true);
-    expect(stopJson.systemMessage).toContain("2 个反思候选待处理");
+    expect(stopJson.systemMessage).toContain("2 reflection candidate(s) pending");
     expect(stopJson.systemMessage).toContain("/llmdoc:update --reflection");
     expect(stopJson.systemMessage).not.toContain("user-correction.md");
     expect(stopJson.systemMessage).not.toContain("test-failure.md");
@@ -531,7 +736,7 @@ code:
     writeRepoFile(rootDir, ".llmdoc-tmp/reflections/pending/notes.txt", "not a candidate\n");
 
     const sessionStart = await runCli(["hook", "session-start"], rootDir);
-    expect(sessionStart.stdout).not.toContain("反思候选");
+    expect(sessionStart.stdout).not.toContain("reflection candidate");
 
     const stop = await runCli(["hook", "stop"], rootDir);
     expect(JSON.parse(stop.stdout)).toEqual({ continue: true });
@@ -544,12 +749,28 @@ code:
       status: string;
       writable: boolean;
       growth: { currentDocumentCount: number };
+      startupPreloads: string[];
       mergeCandidates: unknown[];
     };
     expect(pruneJson.status).toBe("dry_run");
     expect(pruneJson.writable).toBe(false);
     expect(pruneJson.growth.currentDocumentCount).toBeGreaterThan(0);
+    expect(pruneJson.startupPreloads).toEqual([]);
     expect(Array.isArray(pruneJson.mergeCandidates)).toBe(true);
+
+    writeRepoFile(
+      rootDir,
+      "llmdoc.config.json",
+      `${JSON.stringify(
+        { schema: "llmdoc.config/v1", startup: { preload: ["api-client/error-model.mdx"] } },
+        null,
+        2
+      )}\n`
+    );
+    const configuredPrune = await runCli(["prune", "--report"], rootDir);
+    expect(configuredPrune.stdout).toContain("startup preload references:");
+    expect(configuredPrune.stdout).toContain("llmdoc/api-client/error-model.mdx");
+    expect(configuredPrune.stdout).toContain("Keep llmdoc.config.json synchronized");
 
     const v3Upgrade = await runCli(["upgrade", "--json"], rootDir);
     const v3UpgradeJson = JSON.parse(v3Upgrade.stdout) as { status: string; requiresRecorderSemanticMigration: boolean };
@@ -603,6 +824,8 @@ code:
       const result = spawnSync(binPath, ["--help"], { cwd: consumerDir, encoding: "utf8" });
       expect(result.status).toBe(0);
       expect(result.stdout).toContain("Usage: llmdoc");
+      expect(result.stdout).toContain("Quick reference by purpose");
+      expect(result.stdout).not.toMatch(/[\p{Script=Han}]/u);
     } finally {
       fs.rmSync(consumerDir, { recursive: true, force: true });
     }
@@ -627,19 +850,19 @@ code:
 
     const badScope = await runCli(["delta", "--scope", "missing-topic"], rootDir);
     expect(badScope.exitCode).toBe(1);
-    expect(badScope.stdout).toContain("scope 未命中");
+    expect(badScope.stdout).toContain("Scope did not match");
 
     const badFingerprint = await runCli(["fingerprint", "--all", "--update", "api-client/overview.mdx"], rootDir);
     expect(badFingerprint.exitCode).toBe(1);
-    expect(badFingerprint.stdout).toContain("不能同时");
+    expect(badFingerprint.stdout).toContain("cannot use --all and --update together");
 
     const badKindIndex = await runCli(["index", "--kind", "bad-kind"], rootDir);
     expect(badKindIndex.exitCode).toBe(1);
-    expect(badKindIndex.stdout).toContain("非法 kind");
+    expect(badKindIndex.stdout).toContain("Invalid kind");
 
     const badKindSearch = await runCli(["search", "重试", "--kind", "bad-kind"], rootDir);
     expect(badKindSearch.exitCode).toBe(1);
-    expect(badKindSearch.stdout).toContain("非法 kind");
+    expect(badKindSearch.stdout).toContain("Invalid kind");
 
     writeRepoFile(
       rootDir,
@@ -677,10 +900,10 @@ code:
     writeRepoFile(rootDir, "src/team/foo.ts", "export const foo = true;\n");
     const validate = await runCli(["validate"], rootDir);
     expect(validate.exitCode).toBe(1);
-    expect(validate.stdout).toContain("CodeRef 存在未知属性");
-    expect(validate.stdout).not.toContain("正文链接悬空: ./missing.mdx");
-    expect(validate.stdout).not.toContain("禁止在正文中使用 MDX/JS 表达式");
-    expect(validate.stdout).not.toContain("code.paths 指向不存在的路径: src/*/foo.ts");
+    expect(validate.stdout).toContain("CodeRef contains an unknown attribute");
+    expect(validate.stdout).not.toContain("Body link points to a missing document: ./missing.mdx");
+    expect(validate.stdout).not.toContain("MDX/JS expressions are forbidden");
+    expect(validate.stdout).not.toContain("code.paths points to a missing path: src/*/foo.ts");
 
     const tmpEscape = fs.mkdtempSync(path.join(rootDir, "tmp-escape-"));
     fs.symlinkSync(tmpEscape, path.join(rootDir, ".llmdoc-tmp"));
@@ -701,6 +924,7 @@ code:
     const version = await runCli(["--version"], rootDir);
     expect(version.exitCode).toBe(0);
     expect(version.stdout.trim()).toBe(PACKAGE_VERSION);
+
   });
 
   test("all public json payloads validate through runtime output schemas", async () => {
@@ -758,14 +982,14 @@ code:
           exceedsGate: false
         }
       })
-    ).toThrow("内部输出契约错误");
+    ).toThrow("Internal output contract error");
 
     expect(() =>
       assertOutputSchema("hook", {
         continue: true,
         systemMessage: 42
       })
-    ).toThrow("内部输出契约错误");
+    ).toThrow("Internal output contract error");
   });
 
   test("mv stays correct when an ancestor directory is named llmdoc", async () => {
@@ -826,7 +1050,7 @@ code:
     const rootDir = createFixture();
     const result = await runCli(["tree", "--limit", "abc"], rootDir);
     expect(result.exitCode).toBe(1);
-    expect(result.stdout).toContain("非法整数");
+    expect(result.stdout).toContain("Invalid integer");
   });
 
   test("hooks stay silent in repositories without llmdoc", async () => {
@@ -935,7 +1159,7 @@ code:
 
     const refused = await runCli(["init-state"], rootDir);
     expect(refused.exitCode).toBe(1);
-    expect(refused.stdout).toContain("已存在");
+    expect(refused.stdout).toContain("already exists");
   });
 
   test("commit finalizes llmdoc writes as docs+meta commits with fingerprints", async () => {
@@ -1048,16 +1272,16 @@ code:
 
     const conflict = await runCli(["commit", "--all", "--verified", "api-client/retry-policy.mdx"], rootDir);
     expect(conflict.exitCode).not.toBe(0);
-    expect(conflict.stdout).toContain("不能同时使用 --all 与 --verified");
+    expect(conflict.stdout).toContain("cannot use --all and --verified together");
 
     const missing = await runCli(["commit", "--verified", "api-client/missing.mdx"], rootDir);
     expect(missing.exitCode).not.toBe(0);
-    expect(missing.stdout).toContain("文档不存在");
+    expect(missing.stdout).toContain("Document does not exist");
 
     fs.appendFileSync(path.join(rootDir, "src", "api", "retry.ts"), "// dirty change\n");
     const blocked = await runCli(["commit", "--verified", "api-client/retry-policy.mdx"], rootDir);
     expect(blocked.exitCode).not.toBe(0);
-    expect(blocked.stdout).toContain("fingerprint 预检未通过");
+    expect(blocked.stdout).toContain("Fingerprint preflight failed");
   });
 
   test("llmdocignore filters unmapped noise", async () => {
@@ -1084,7 +1308,7 @@ code:
 
     const result = await runCli(["commit", "--all", "-m", "repro: llmdoc partial commit"], rootDir);
     expect(result.exitCode).not.toBe(0);
-    expect(result.stdout).toContain("未创建任何 commit");
+    expect(result.stdout).toContain("no commit was created");
 
     const headAfter = spawnSync("git", ["rev-parse", "HEAD"], { cwd: rootDir, encoding: "utf8" }).stdout.trim();
     expect(headAfter).toBe(headBefore);
@@ -1123,7 +1347,7 @@ code:
 
     const missing = await runCli(["adopt", "api-client/not-there.mdx"], rootDir);
     expect(missing.exitCode).toBe(1);
-    expect(missing.stdout).toContain("目标不存在");
+    expect(missing.stdout).toContain("Target does not exist");
   });
 
   test("status distinguishes metadata-only commits behind baseline from relevant source commits", async () => {

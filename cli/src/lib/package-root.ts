@@ -10,7 +10,7 @@ export function packageRootFromImport(metaUrl: string): string {
     }
     const parent = path.dirname(current);
     if (parent === current) {
-      throw new Error(`无法从 ${metaUrl} 向上定位 package root。`);
+      throw new Error(`Unable to locate the package root above ${metaUrl}.`);
     }
     current = parent;
   }

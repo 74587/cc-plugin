@@ -1,0 +1,11 @@
+{
+  "$schema": "https://llmdoc.tokenroll.ai/schemas/config.schema.json",
+  "schema": "llmdoc.config/v1",
+  "startup": {
+    "remindSkill": true,
+    "preload": [
+      "architecture.mdx",
+      "cli-runtime/state-and-validation.mdx"
+    ]
+  }
+}

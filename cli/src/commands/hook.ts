@@ -3,12 +3,18 @@ import path from "node:path";
 
 import { analyzeDelta } from "../lib/state.js";
 import { loadWorkspace } from "../lib/workspace.js";
+import { formatCompactPreloadIndex, formatStartupPreloadDocuments, loadLlmdocConfig } from "../lib/config.js";
+import type { LoadedLlmdocConfig } from "../types.js";
 
 interface HookOptions {
   cwd: string;
   mode: "session-start" | "stop" | "compact";
   stdin: string;
 }
+
+// Minimal SessionStart guidance; the complete protocol remains in the llmdoc skill.
+const SESSION_START_GUIDANCE =
+  "Operating guidance: Before broad exploration, planning, or documentation work, load the llmdoc skill and retrieve through the CLI instead of crawling the whole repository; align with the user before non-trivial plans or edits; proactively delegate to subagents (investigator for current-state and unfamiliar subsystems, recorder exclusively for stable llmdoc/ writes, reflector for workflow lessons); when a task produces durable knowledge, finish with /llmdoc:update.";
 
 export function runHook(options: HookOptions): string {
   try {
@@ -51,29 +57,68 @@ function runSessionStart(cwd: string, stdin: string): string {
     // fingerprint/commit 正常收尾会让 HEAD 前进到仅修改 llmdoc/meta.json 的 follow-up commit。
     // 没有可执行影响时不展示 raw baseline 落后数，避免把知识面自身更新误报成需要再次 update。
     if (!signal.shouldUpdate) {
-      parts.push("文档无待处理影响");
+      parts.push("documents have no actionable impacts");
       if (pendingLessonCandidates > 0) {
-        parts.push(`待处理反思候选 ${pendingLessonCandidates} 个`);
+        parts.push(`${pendingLessonCandidates} pending reflection candidate(s)`);
       }
-      return parts.join("; ");
+    } else {
+      const baseline = workspace.meta?.baseline.revision ? workspace.meta.baseline.revision.slice(0, 7) : "missing";
+      const freshness = delta.git.baselineBehindHead === null ? "distance unknown" : delta.git.baselineBehindHead === 0 ? "at HEAD" : `${delta.git.baselineBehindHead} commit(s) behind HEAD`;
+      parts.push(`baseline ${baseline}(${freshness})`);
+      const summary = [
+        signal.impactedCount > 0 ? `${signal.impactedCount} impacted document(s)` : null,
+        signal.needsReviewCount > 0 ? `${signal.needsReviewCount} document(s) need review` : null,
+        signal.unmappedCount > 0 ? `${signal.unmappedCount} unmapped code path(s)` : null
+      ]
+        .filter(Boolean)
+        .join(", ");
+      parts.push(`${summary} → inspect npx @tokenroll/llmdoc delta first`);
+      if (pendingLessonCandidates > 0) {
+        parts.push(`${pendingLessonCandidates} pending reflection candidate(s)`);
+      }
     }
-    const baseline = workspace.meta?.baseline.revision ? workspace.meta.baseline.revision.slice(0, 7) : "缺失";
-    const freshness = delta.git.baselineBehindHead === null ? "落后未知" : delta.git.baselineBehindHead === 0 ? "与 HEAD 同步" : `落后 HEAD ${delta.git.baselineBehindHead} commit`;
-    parts.push(`baseline ${baseline}(${freshness})`);
-    const summary = [
-      signal.impactedCount > 0 ? `受影响 ${signal.impactedCount} 篇` : null,
-      signal.needsReviewCount > 0 ? `待复核 ${signal.needsReviewCount} 篇` : null,
-      signal.unmappedCount > 0 ? `未映射代码路径 ${signal.unmappedCount} 个` : null
-    ]
-      .filter(Boolean)
-      .join(", ");
-    parts.push(`${summary} → 建议先看 npx @tokenroll/llmdoc delta`);
-    if (pendingLessonCandidates > 0) {
-      parts.push(`待处理反思候选 ${pendingLessonCandidates} 个`);
+
+    const context = [parts.join("; ")];
+    const startupConfig = workspace.llmdocConfig;
+    if (startupConfig.config?.startup?.remindSkill ?? true) {
+      context.push(SESSION_START_GUIDANCE);
     }
-    return parts.join("; ");
+    appendStartupConfigIssues(context, startupConfig);
+    const preloaded =
+      source === "compact"
+        ? formatCompactPreloadIndex(startupConfig.preloadPaths)
+        : formatStartupPreloadDocuments(
+            startupConfig.preloadPaths.map((preloadPath) => workspace.documentsByLlmdocPath.get(preloadPath)!)
+          );
+    if (preloaded) {
+      context.push(preloaded);
+    }
+    return context.join("\n\n");
   } catch {
-    return `llmdoc ${lifecycle}; 状态读取失败,检索不受影响`;
+    const context = [`llmdoc ${lifecycle}; status read failed, retrieval remains available`];
+    const startupConfig = loadLlmdocConfig(cwd);
+    if (startupConfig.config?.startup?.remindSkill ?? true) {
+      context.push(SESSION_START_GUIDANCE);
+    }
+    appendStartupConfigIssues(context, startupConfig);
+    return context.join("\n\n");
+  }
+}
+
+function appendStartupConfigIssues(context: string[], startupConfig: LoadedLlmdocConfig): void {
+  const errors = startupConfig.issues.filter((issue) => issue.severity === "error");
+  const warnings = startupConfig.issues.filter((issue) => issue.severity === "warning");
+  if (errors.length > 0) {
+    context.push(
+      startupConfig.config
+        ? "llmdoc.config.json has invalid startup.preload entries; preload was skipped while the valid remindSkill preference remained applied. Run npx @tokenroll/llmdoc validate for details."
+        : "llmdoc.config.json could not be applied; preload was skipped and the default skill reminder remains active. Run npx @tokenroll/llmdoc validate for details."
+    );
+  }
+  if (warnings.length > 0) {
+    context.push(
+      "llmdoc.config.json has warnings; normalized duplicate startup.preload entries were ignored. Run npx @tokenroll/llmdoc validate for details."
+    );
   }
 }
 
@@ -87,24 +132,24 @@ function runStop(cwd: string): object {
       return { continue: true };
     }
     const summary = [
-      signal.impactedCount > 0 ? `${signal.impactedCount} 篇文档受代码变更影响` : null,
-      signal.needsReviewCount > 0 ? `${signal.needsReviewCount} 篇文档需要复核` : null,
-      signal.unmappedCount > 0 ? `${signal.unmappedCount} 个代码路径未映射到任何文档` : null,
-      pendingLessonCandidates > 0 ? `${pendingLessonCandidates} 个反思候选待处理` : null
+      signal.impactedCount > 0 ? `${signal.impactedCount} document(s) impacted by code changes` : null,
+      signal.needsReviewCount > 0 ? `${signal.needsReviewCount} document(s) need review` : null,
+      signal.unmappedCount > 0 ? `${signal.unmappedCount} code path(s) are not mapped to any document` : null,
+      pendingLessonCandidates > 0 ? `${pendingLessonCandidates} reflection candidate(s) pending` : null
     ]
       .filter(Boolean)
       .join(", ");
-    const reasons = delta.reasons.length > 0 ? `信号: ${delta.reasons.join("; ")}` : "";
+    const reasons = delta.reasons.length > 0 ? `Signals: ${delta.reasons.join("; ")}` : "";
     const updateCommand = pendingLessonCandidates > 0 ? "/llmdoc:update --reflection" : "/llmdoc:update";
     const guidance =
       pendingLessonCandidates > 0
         ? signal.shouldUpdate
-          ? "workflow 会读取 pending 候选;代码影响面可先用 npx @tokenroll/llmdoc delta 查看"
-          : "workflow 会读取 pending 候选"
-        : "先用 npx @tokenroll/llmdoc delta 查看影响面";
+          ? "the workflow will read pending candidates; inspect code impact with npx @tokenroll/llmdoc delta first"
+          : "the workflow will read pending candidates"
+        : "inspect impact with npx @tokenroll/llmdoc delta first";
     return {
       continue: true,
-      systemMessage: `llmdoc: ${summary},建议运行 ${updateCommand}(${guidance})。${reasons}`
+      systemMessage: `llmdoc: ${summary}. Consider running ${updateCommand} (${guidance}). ${reasons}`.trim()
     };
   } catch (error) {
     return {
@@ -135,7 +180,7 @@ function runCompact(): object {
   return {
     continue: true,
     systemMessage:
-      "即将 compact:请在 summary 中写入 LLMDOC_STATE(active goal、已读 llmdoc 文档、关键结论与不变量、用户决策、lesson_candidates、next step、open risks)。恢复后若该状态仍充分,直接继续,不要重放 tree/show。"
+      "Compaction is imminent. Preserve LLMDOC_STATE in the summary (active goal, llmdoc documents already read, key conclusions and invariants, user decisions, lesson_candidates, next step, open risks). After resuming, continue directly when that state is sufficient; do not replay tree/show."
   };
 }
 

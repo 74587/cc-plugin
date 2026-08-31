@@ -48,6 +48,22 @@ export interface MetaLedger {
   };
 }
 
+export interface LlmdocConfig {
+  $schema?: string;
+  schema: "llmdoc.config/v1";
+  startup?: {
+    remindSkill?: boolean;
+    preload?: string[];
+  };
+}
+
+export interface LoadedLlmdocConfig {
+  exists: boolean;
+  config: LlmdocConfig | null;
+  preloadPaths: string[];
+  issues: ValidationIssue[];
+}
+
 export interface WorkspaceData {
   rootDir: string;
   llmdocDir: string;
@@ -57,6 +73,7 @@ export interface WorkspaceData {
   topics: Map<string, ParsedDocument[]>;
   rootSingletons: ParsedDocument[];
   meta: MetaLedger | null;
+  llmdocConfig: LoadedLlmdocConfig;
   preloadIssues: ValidationIssue[];
 }
 

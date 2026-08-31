@@ -18,22 +18,22 @@ export function runAdopt(options: AdoptOptions): unknown {
   const rootDir = findProjectRoot(options.cwd);
   const workspace = loadWorkspace(rootDir);
   if (!workspace.meta) {
-    throw new CliError("缺少 llmdoc/meta.json,先运行 llmdoc init-state。");
+    throw new CliError("llmdoc/meta.json is missing; run llmdoc init-state first.");
   }
 
   const llmdocPaths = options.paths.map((input) => {
     const repoRelativePath = normalizeRepoRelativePath(input.startsWith("llmdoc/") ? input : `llmdoc/${input}`);
     if (!repoRelativePath.startsWith("llmdoc/") || !repoRelativePath.endsWith(".mdx")) {
-      throw new CliError(`adopt 只能登记 llmdoc/ 下的 .mdx 文档: ${input}`);
+      throw new CliError(`adopt can register only .mdx documents under llmdoc/: ${input}`);
     }
     const shape = parseDocTargetShape(repoRelativePath);
     assertDocKindMatchesShape(shape);
     const absolutePath = resolveInsideRoot(rootDir, repoRelativePath, { allowMissing: true });
     if (!fs.existsSync(absolutePath)) {
-      throw new CliError(`目标不存在,adopt 只登记已有文档(新建请用 llmdoc new): ${repoRelativePath}`);
+      throw new CliError(`Target does not exist; adopt registers existing documents only (use llmdoc new to create one): ${repoRelativePath}`);
     }
     if (!workspace.documentsByLlmdocPath.has(shape.llmdocPath)) {
-      throw new CliError(`文档未被 workspace 识别(front matter 可能不合法): ${repoRelativePath}`);
+      throw new CliError(`The workspace did not recognize the document (its front matter may be invalid): ${repoRelativePath}`);
     }
     return shape.llmdocPath;
   });
@@ -45,7 +45,7 @@ export function runAdopt(options: AdoptOptions): unknown {
   );
   if (blockingIssues.length > 0) {
     throw new CliError(
-      `目标文档未通过校验,拒绝登记:\n${blockingIssues.map((issue) => `  ${issue.code} (${issue.path}) ${issue.message}`).join("\n")}`
+      `Target documents failed validation; refusing to register them:\n${blockingIssues.map((issue) => `  ${issue.code} (${issue.path}) ${issue.message}`).join("\n")}`
     );
   }
 
@@ -74,7 +74,7 @@ export function runAdopt(options: AdoptOptions): unknown {
     lines.push(`already registered (no-op): ${alreadyRegistered.join(", ")}`);
   }
   if (adopted.length > 0) {
-    lines.push("validatedRevision 登记为 null;经 validate 后用 fingerprint/commit 写入有效 revision。");
+    lines.push("validatedRevision was registered as null; after validation, use fingerprint/commit to write a valid revision.");
   }
   return lines.join("\n");
 }

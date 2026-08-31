@@ -37,7 +37,7 @@ export function runSearch(options: SearchOptions): unknown {
 
   const lines: string[] = [];
   if (search.mode === "cjk-bigram-fallback") {
-    lines.push("note: 中文分词未命中，已使用 CJK bigram 降级检索。", "");
+    lines.push("note: Chinese segmentation returned no matches; CJK bigram fallback was used.", "");
   }
   for (const entry of paginated.items) {
     lines.push(`llmdoc/${entry.document.llmdocPath}  [${entry.document.frontmatter.kind}]`);

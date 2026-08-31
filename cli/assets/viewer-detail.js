@@ -9,7 +9,7 @@ const DROP_TAGS = new Set(["EMBED", "FORM", "IFRAME", "INPUT", "LINK", "META", "
 export function createDetailRenderer({ panel, container, onSelectDocument, getState }) {
   let activeRequest = null;
 
-  function showPlaceholder(message = "选择一个 topic 或文档查看详情") {
+  function showPlaceholder(message = "Select a topic or document to view details") {
     activeRequest?.abort();
     const placeholder = element("div", "placeholder", message);
     container.replaceChildren(placeholder);
@@ -31,7 +31,7 @@ export function createDetailRenderer({ panel, container, onSelectDocument, getSt
     const description = element(
       "div",
       "desc",
-      `${documents.length} docs · ~${tokenCount} tokens · 状态最差 ${worstStatus(documents)}`
+      `${documents.length} docs · ~${tokenCount} tokens · worst status ${worstStatus(documents)}`
     );
     const cards = documents.map((node) => {
       const card = element("button", "topic-doc-card");
@@ -52,7 +52,7 @@ export function createDetailRenderer({ panel, container, onSelectDocument, getSt
     activeRequest?.abort();
     activeRequest = new AbortController();
     const request = activeRequest;
-    container.replaceChildren(element("div", "placeholder", "正在加载文档…"));
+    container.replaceChildren(element("div", "placeholder", "Loading document…"));
     openPanel();
 
     try {
@@ -64,7 +64,7 @@ export function createDetailRenderer({ panel, container, onSelectDocument, getSt
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       const message = error instanceof Error ? error.message : String(error);
-      container.replaceChildren(element("div", "placeholder", `加载失败：${message}`));
+      container.replaceChildren(element("div", "placeholder", `Load failed: ${message}`));
     }
   }
 

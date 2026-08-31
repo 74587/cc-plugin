@@ -20,6 +20,7 @@ function readSchema(fileName: string): unknown {
 
 const docValidator = ajv.compile(readSchema("doc-frontmatter.schema.json"));
 const metaValidator = ajv.compile(readSchema("meta.schema.json"));
+const configValidator = ajv.compile(readSchema("config.schema.json"));
 
 export function validateDocFrontmatter(input: unknown): string[] {
   const ok = docValidator(input);
@@ -46,6 +47,14 @@ export function validateMeta(input: unknown): string[] {
     errors.push("/convergence/capturedAt must be a real RFC3339 UTC timestamp");
   }
   return errors;
+}
+
+export function validateLlmdocConfig(input: unknown): string[] {
+  const ok = configValidator(input);
+  if (ok) {
+    return [];
+  }
+  return (configValidator.errors ?? []).map(formatAjvError);
 }
 
 function formatAjvError(error: ErrorObject): string {

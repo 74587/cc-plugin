@@ -7,6 +7,7 @@ import { findProjectRoot, normalizeRepoRelativePath, repoPath, resolveInsideRoot
 import { gitMove, gitRestorePaths } from "../lib/git.js";
 import { MoveMapping, updateDocumentForMove, writeFileIfChanged } from "../lib/rewrite.js";
 import { loadWorkspace } from "../lib/workspace.js";
+import { LLMDOC_CONFIG_FILENAME, rewriteStartupPreloadForMove } from "../lib/config.js";
 import { MetaLedger, ParsedDocument } from "../types.js";
 
 interface MoveOptions {
@@ -23,25 +24,25 @@ export function runMove(options: MoveOptions): unknown {
   const fromAbsolutePath = resolveInsideRoot(rootDir, fromRepoPath);
 
   if (!fromRepoPath.startsWith("llmdoc/") || !toRepoPath.startsWith("llmdoc/")) {
-    throw new CliError("mv 仅支持 llmdoc/ 内部移动。");
+    throw new CliError("mv supports moves only within llmdoc/.");
   }
   if (fromRepoPath === "llmdoc/meta.json" || toRepoPath === "llmdoc/meta.json") {
-    throw new CliError("mv 不允许移动 meta.json。");
+    throw new CliError("mv cannot move meta.json.");
   }
 
   const fromStats = fs.statSync(fromAbsolutePath);
   const beforeWorkspace = loadWorkspace(rootDir);
   if (fromStats.isDirectory()) {
     if (!isDirectTopicDirectory(fromRepoPath) || !isDirectTopicDirectory(toRepoPath)) {
-      throw new CliError("topic 目录重命名仅允许 llmdoc/<topic> -> llmdoc/<topic>。");
+      throw new CliError("Topic renames must use llmdoc/<topic> -> llmdoc/<topic>.");
     }
   } else {
     if (!fromRepoPath.endsWith(".mdx") || !toRepoPath.endsWith(".mdx")) {
-      throw new CliError("mv 仅允许移动 .mdx 文档。");
+      throw new CliError("mv can move only .mdx documents.");
     }
     const fromDocument = beforeWorkspace.documents.find((document) => document.repoPath === fromRepoPath);
     if (!fromDocument) {
-      throw new CliError("mv 仅允许移动已索引的 llmdoc 文档。");
+      throw new CliError("mv can move only indexed llmdoc documents.");
     }
     const targetShape = parseDocTargetShape(toRepoPath);
     validateMoveTargetShape(targetShape);
@@ -49,10 +50,15 @@ export function runMove(options: MoveOptions): unknown {
 
   const toAbsolutePath = resolveInsideRoot(rootDir, toRepoPath, { allowMissing: true });
   if (fs.existsSync(toAbsolutePath)) {
-    throw new CliError(`目标已存在: ${toRepoPath}`);
+    throw new CliError(`Target already exists: ${toRepoPath}`);
   }
 
   const mapping = buildMoveMapping(beforeWorkspace.documents, beforeWorkspace.llmdocDir, fromAbsolutePath, toAbsolutePath);
+  const configRewrite = beforeWorkspace.llmdocConfig.config
+    ? rewriteStartupPreloadForMove(beforeWorkspace.llmdocConfig.config, mapping)
+    : { config: null, changed: false };
+  const configPath = path.join(rootDir, LLMDOC_CONFIG_FILENAME);
+  const originalConfig = configRewrite.changed ? fs.readFileSync(configPath, "utf8") : null;
   // 目标 topic 目录不存在时自动创建(topic 即纯目录,没有入口节点前置要求)。
   fs.mkdirSync(path.dirname(toAbsolutePath), { recursive: true });
   gitMove(rootDir, fromRepoPath, toRepoPath);
@@ -88,13 +94,16 @@ export function runMove(options: MoveOptions): unknown {
       const nextMeta = rewriteMeta(refreshedWorkspace.meta, mapping);
       fs.writeFileSync(refreshedWorkspace.metaPath, `${JSON.stringify(nextMeta, null, 2)}\n`);
     }
+    if (configRewrite.changed && configRewrite.config) {
+      fs.writeFileSync(configPath, `${JSON.stringify(configRewrite.config, null, 2)}\n`);
+    }
   } catch (error) {
-    const rolledBack = rollbackMove(rootDir, toAbsolutePath);
+    const rolledBack = rollbackMove(rootDir, toAbsolutePath, configPath, originalConfig);
     const reason = error instanceof Error ? error.message : String(error);
     throw new CliError(
       rolledBack
-        ? `mv 引用重写阶段失败，llmdoc/ 已回滚到移动前状态: ${reason}`
-        : `mv 引用重写阶段失败，且自动回滚未完成，请检查 git status -- llmdoc/ 后手动恢复: ${reason}`
+        ? `Reference rewriting failed during mv; llmdoc/ was rolled back to its previous state: ${reason}`
+        : `Reference rewriting failed during mv and automatic rollback did not complete. Inspect git status -- llmdoc/ llmdoc.config.json and recover manually: ${reason}`
     );
   }
 
@@ -104,10 +113,11 @@ export function runMove(options: MoveOptions): unknown {
         from: fromRepoPath,
         to: toRepoPath
       },
+      rewrittenConfig: configRewrite.changed,
       rewrittenDocuments: [...documentTargets].map((absolutePath) => repoPath(rootDir, absolutePath)).sort()
     };
   }
-  return `moved: ${fromRepoPath} -> ${toRepoPath}`;
+  return `moved: ${fromRepoPath} -> ${toRepoPath}${configRewrite.changed ? "; updated llmdoc.config.json startup preload" : ""}`;
 }
 
 function buildMoveMapping(
@@ -127,7 +137,7 @@ function buildMoveMapping(
         return relative.replaceAll(path.sep, "/");
       }
     }
-    throw new CliError(`无法从路径推导 llmdoc 相对路径: ${absolutePath}`);
+    throw new CliError(`Unable to derive an llmdoc-relative path from: ${absolutePath}`);
   };
   const fromPathIsDirectory = fs.statSync(fromAbsolutePath).isDirectory();
 
@@ -153,10 +163,13 @@ function buildMoveMapping(
   return mapping.sort((left, right) => right.oldLlmdocPath.length - left.oldLlmdocPath.length);
 }
 
-function rollbackMove(rootDir: string, toAbsolutePath: string): boolean {
+function rollbackMove(rootDir: string, toAbsolutePath: string, configPath: string, originalConfig: string | null): boolean {
   try {
     fs.rmSync(toAbsolutePath, { recursive: true, force: true });
     gitRestorePaths(rootDir, ["llmdoc"]);
+    if (originalConfig !== null) {
+      fs.writeFileSync(configPath, originalConfig);
+    }
     return true;
   } catch {
     return false;

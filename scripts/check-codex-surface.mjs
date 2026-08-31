@@ -166,7 +166,7 @@ for (const name of ["llmdoc", "init", "update", "prune", "upgrade"]) {
 
 // Skill references are part of the executable prompt surface too. A mirrored SKILL.md
 // is not sufficient when its conditionally loaded guidance is missing or stale.
-for (const rel of ["llmdoc/references/knowledge-topology.md"]) {
+for (const rel of ["llmdoc/references/knowledge-topology.md", "llmdoc/references/startup-config.md"]) {
   const claudePath = `skills/${rel}`;
   const codexPath = `.agents/skills/${rel}`;
   const claudeReference = readText(claudePath);
@@ -194,10 +194,22 @@ for (const rel of [
   }
 }
 
+for (const name of ["init", "update", "prune"]) {
+  for (const rel of [`skills/${name}/SKILL.md`, `.agents/skills/${name}/SKILL.md`]) {
+    const content = readText(rel);
+    if (content !== null && !content.includes("../llmdoc/references/startup-config.md")) {
+      errors.push(`${rel}: 未按需路由到 startup-config reference`);
+    }
+  }
+}
+
 for (const rel of ["skills/llmdoc/SKILL.md", ".agents/skills/llmdoc/SKILL.md"]) {
   const content = readText(rel);
   if (content !== null && !content.includes("references/knowledge-topology.md")) {
     errors.push(`${rel}: operating skill 未暴露 knowledge-topology reference`);
+  }
+  if (content !== null && !content.includes("references/startup-config.md")) {
+    errors.push(`${rel}: operating skill 未暴露 startup-config reference`);
   }
 }
 

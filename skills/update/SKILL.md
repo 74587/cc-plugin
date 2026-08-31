@@ -54,6 +54,7 @@ This command does not authorize source-code edits.
    - Scaffold brand-new docs with `new`; register docs that already exist as files with `adopt <path...>` — never hand-edit `meta.json` or recreate the file through `new`.
 
 5. Finalize.
+   - If document identities changed, read [Startup Configuration](../llmdoc/references/startup-config.md). `mv` syncs renames; sync manual merges or deletions before validation.
    - Run `validate`; after mapping or boundary changes, also run the reference's scoped routing acceptance.
    - If prose changed, run `commit -m "<message>"`, adding `--verified <path...>` for reviewed unchanged docs. If all stayed unchanged, run `commit --verified <path...>`. Full verification uses `--all`, never with `--verified`.
    - `commit` validates, commits prose, refreshes fingerprints, and lands `meta.json` separately. Never reconstruct this sequence manually or `--amend` it.

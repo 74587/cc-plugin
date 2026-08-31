@@ -24,24 +24,24 @@ export function runCommit(options: CommitOptions): unknown {
     (options.verified ?? []).map((value) => (value.startsWith("llmdoc/") ? value.slice("llmdoc/".length) : value))
   );
   if (options.all && verifiedPaths.length > 0) {
-    throw new CliError("commit 不能同时使用 --all 与 --verified。");
+    throw new CliError("commit cannot use --all and --verified together.");
   }
   for (const docPath of verifiedPaths) {
     if (!preflightWorkspace.documentsByLlmdocPath.has(docPath)) {
-      throw new CliError(`文档不存在: ${docPath}`);
+      throw new CliError(`Document does not exist: ${docPath}`);
     }
   }
 
   const issues = validateWorkspace(preflightWorkspace);
   const errors = issues.filter((issue) => issue.severity === "error");
   if (errors.length > 0) {
-    throw new CliError(`validate 未通过,拒绝提交:\n${errors.map((issue) => `  ${issue.code} (${issue.path})`).join("\n")}`);
+    throw new CliError(`Validation failed; refusing to commit:\n${errors.map((issue) => `  ${issue.code} (${issue.path})`).join("\n")}`);
   }
 
   const porcelain = runGit(rootDir, ["status", "--porcelain", "--", "llmdoc"]);
   const hasLlmdocChanges = Boolean(porcelain.trim());
   if (!hasLlmdocChanges && !options.all && verifiedPaths.length === 0) {
-    return options.json ? { status: "no_change", commits: [], updated: [] } : "no_change: llmdoc/ 无待提交变更";
+    return options.json ? { status: "no_change", commits: [], updated: [] } : "no_change: llmdoc/ has no changes to commit";
   }
   const changedDocPaths = porcelain
     .split(/\r?\n/)
@@ -65,7 +65,7 @@ export function runCommit(options: CommitOptions): unknown {
       updateAll: options.all ?? false
     });
   } catch (error) {
-    throw new CliError(`fingerprint 预检未通过,未创建任何 commit: ${(error as Error).message}`, 70);
+    throw new CliError(`Fingerprint preflight failed; no commit was created: ${(error as Error).message}`, 70);
   }
 
   if (changedDocPaths.length === 0) {
@@ -191,7 +191,7 @@ function uniquePaths(paths: string[]): string[] {
 function runGit(rootDir: string, args: string[]): string {
   const result = spawnSync("git", ["-c", "core.quotePath=false", ...args], { cwd: rootDir, encoding: "utf8" });
   if (result.status !== 0) {
-    throw new CliError((result.stderr || result.stdout || `git ${args[0]} 失败`).trim());
+    throw new CliError((result.stderr || result.stdout || `git ${args[0]} failed`).trim());
   }
   return result.stdout;
 }

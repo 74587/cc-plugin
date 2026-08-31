@@ -25,14 +25,14 @@ import DocsLayout from "../../../../layouts/DocsLayout.astro";
   <dl class="commands">
     <div><dt><code>status</code></dt><dd>有效性、baseline、dirty 与增长信号。</dd></div>
     <div><dt><code>delta</code></dt><dd>从代码变化计算受影响文档闭包。</dd></div>
-    <div><dt><code>validate</code></dt><dd>校验 schema、结构、关系、链接、代码路径（含零命中 glob）与 ledger 一致性。</dd></div>
+    <div><dt><code>validate</code></dt><dd>校验 schema、结构、关系、链接、代码路径（含零命中 glob）、ledger 一致性与可选启动配置。</dd></div>
   </dl>
 
   <h2>安全改写</h2>
   <dl class="commands">
     <div><dt><code>new &lt;path&gt; --kind &lt;kind&gt;</code></dt><dd>创建 V3 文档骨架；最近 Git 根尚无 <code>llmdoc/</code> 时会自动建立目录。</dd></div>
     <div><dt><code>adopt &lt;path…&gt;</code></dt><dd>登记已有合法文档，不重写正文。</dd></div>
-    <div><dt><code>mv &lt;from&gt; &lt;to&gt;</code></dt><dd>事务式移动文档并重写内部引用。</dd></div>
+    <div><dt><code>mv &lt;from&gt; &lt;to&gt;</code></dt><dd>移动文档，并事务性重写内部引用、ledger identity 与匹配的 startup preload 项。</dd></div>
     <div><dt><code>init-state</code></dt><dd>在真实 Git HEAD 上建立首次 ledger；unborn 仓库须先创建初始 commit。</dd></div>
     <div><dt><code>commit [--verified &lt;path…&gt; | --all]</code></dt><dd>校验、提交正文，并刷新变化或验证未变文档的 revision。</dd></div>
     <div><dt><code>fingerprint --update &lt;path…&gt; | --all</code></dt><dd>刷新 ledger 中经过验证的 revision。</dd></div>
@@ -40,10 +40,24 @@ import DocsLayout from "../../../../layouts/DocsLayout.astro";
 
   <h2>显式操作与 hooks</h2>
   <dl class="commands">
-    <div><dt><code>prune --report</code></dt><dd>只读的知识收敛信号。</dd></div>
+    <div><dt><code>prune --report</code></dt><dd>只读的知识收敛信号，并列出手工合并或删除必须维护的 startup preload 引用。</dd></div>
     <div><dt><code>upgrade</code></dt><dd>显式 V2 迁移诊断。</dd></div>
     <div><dt><code>hook session-start | stop | compact</code></dt><dd>只读、fail-open 的宿主信号。</dd></div>
   </dl>
+
+  <h2>启动上下文配置</h2>
+  <p>llmdoc workspace 根目录可增加可选的 <code>llmdoc.config.json</code>；在 Git 仓库中，它就是拥有 <code>llmdoc/</code> 的最近 Git 根。该配置可让 SessionStart 主动提示 Agent 使用 llmdoc skill，并在冷启动直接载入精确文档：</p>
+  <pre><code>&#123;
+  "$schema": "https://llmdoc.tokenroll.ai/schemas/config.schema.json",
+  "schema": "llmdoc.config/v1",
+  "startup": &#123;
+    "remindSkill": true,
+    "preload": ["architecture.mdx", "api-client/contracts.mdx"]
+  &#125;
+&#125;</code></pre>
+  <p><a href="/schemas/config.schema.json">已发布的 schema</a> 可供编辑器校验。操作守则默认启用；将 <code>remindSkill</code> 设为 <code>false</code> 可关闭。冷启动预载保持声明顺序，且不设置 llmdoc 字符或 token 预算；结尾完成标记用于暴露可能的宿主截断。compact 重入只列文档 ID，不重复注入正文。</p>
+  <p><code>validate</code> 会拒绝非法或不存在的路径，并在去重规范化别名时产生 warning。hook 保持 fail-open：JSON/schema 无法读取时使用默认提醒；仅 preload 出错时保留合法的 <code>remindSkill</code> 选择并跳过 preload。</p>
+  <p>CLI 自身的固定界面文案全部使用英文；中文查询与仓库文档内容仍完整支持并保持原文返回。</p>
 </DocsLayout>
 
 <style>

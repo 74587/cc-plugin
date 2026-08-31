@@ -8,7 +8,7 @@ export function findProjectRoot(startDir: string): string {
   if (found) {
     return found;
   }
-  throw new CliError("未找到 llmdoc/ 目录，请在仓库内运行该命令。", 2);
+  throw new CliError("No llmdoc/ directory was found. Run this command inside an llmdoc repository.", 2);
 }
 
 // new 是唯一允许在 llmdoc/ 尚不存在时运行的结构改写命令。
@@ -23,7 +23,7 @@ export function findProjectRootForNew(startDir: string): string {
   if (gitRoot) {
     return gitRoot;
   }
-  throw new CliError("未找到 Git 仓库；请先运行 `git init`，再运行 `llmdoc new`。", 2);
+  throw new CliError("No Git repository was found. Run `git init` before `llmdoc new`.", 2);
 }
 
 export function findProjectRootOrNull(startDir: string): string | null {
@@ -75,14 +75,14 @@ function isDirectory(candidate: string): boolean {
 export function normalizeRepoRelativePath(input: string): string {
   const normalized = input.replaceAll("\\", "/");
   if (!normalized || normalized.startsWith("/") || normalized.includes("\0")) {
-    throw new CliError(`非法路径: ${input}`);
+    throw new CliError(`Invalid path: ${input}`);
   }
   const parts = normalized.split("/").filter((part) => part !== ".");
   if (parts.length === 0) {
-    throw new CliError(`非法路径: ${input}`);
+    throw new CliError(`Invalid path: ${input}`);
   }
   if (parts.some((part) => part === ".." || part === "")) {
-    throw new CliError(`路径必须是仓库内规范化相对路径: ${input}`);
+    throw new CliError(`Path must be a normalized repository-relative path: ${input}`);
   }
   return parts.join("/");
 }
@@ -95,13 +95,13 @@ export function resolveInsideRoot(rootDir: string, repoRelativePath: string, opt
   const ancestorRealPath = fs.realpathSync(nearestExistingAncestor);
 
   if (!isWithinRoot(rootRealPath, ancestorRealPath)) {
-    throw new CliError(`路径越界或经由符号链接逃逸: ${repoRelativePath}`);
+    throw new CliError(`Path escapes the repository directly or through a symlink: ${repoRelativePath}`);
   }
 
   if (fs.existsSync(candidate)) {
     const candidateRealPath = fs.realpathSync(candidate);
     if (!isWithinRoot(rootRealPath, candidateRealPath)) {
-      throw new CliError(`路径越界或经由符号链接逃逸: ${repoRelativePath}`);
+      throw new CliError(`Path escapes the repository directly or through a symlink: ${repoRelativePath}`);
     }
     return candidateRealPath;
   }
@@ -110,7 +110,7 @@ export function resolveInsideRoot(rootDir: string, repoRelativePath: string, opt
     return candidate;
   }
 
-  throw new CliError(`路径不存在: ${repoRelativePath}`);
+  throw new CliError(`Path does not exist: ${repoRelativePath}`);
 }
 
 export function isWithinRoot(rootRealPath: string, candidateRealPath: string): boolean {

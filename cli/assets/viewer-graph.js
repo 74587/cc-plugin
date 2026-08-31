@@ -332,11 +332,11 @@ export function createGraphController(options) {
 
   function setGraphChrome(mode) {
     hint.textContent = mode === "topics"
-      ? "Topic 拓扑 · 边粗细表示跨域引用数 · 点击下钻"
-      : "文档全图 · 点击查看详情 · 拖动画布 / 滚轮缩放";
+      ? "Topic topology · edge width shows cross-domain references · click to drill down"
+      : "Document graph · click for details · drag to pan / scroll to zoom";
     legend.replaceChildren();
     const edgeItems = mode === "topics"
-      ? [["", "跨域引用"]]
+      ? [["", "Cross-domain references"]]
       : [["", "requires"], ["related", "related"], ["link", "link"]];
     for (const [className, label] of edgeItems) {
       const item = document.createElement("span");

@@ -17,7 +17,7 @@ export function runShow(options: ShowOptions): unknown {
     const normalized = rawPath.startsWith("llmdoc/") ? rawPath.slice("llmdoc/".length) : rawPath;
     const document = workspace.documentsByLlmdocPath.get(normalized);
     if (!document) {
-      throw new CliError(`文档不存在: ${rawPath}`);
+      throw new CliError(`Document does not exist: ${rawPath}`);
     }
     return document;
   });

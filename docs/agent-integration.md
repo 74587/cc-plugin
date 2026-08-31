@@ -25,6 +25,12 @@ This project uses llmdoc V3 as persistent engineering context.
 - If hooks are available, keep them read-only and fail-open. They may signal
   startup context, update needs, or compact state; they must not mutate
   knowledge or source code.
+- SessionStart supplies the default operating guidance. A repository may disable
+  it with `startup.remindSkill: false` and may opt into exact document preloading
+  through workspace-root `llmdoc.config.json`. On cold start, treat preloaded
+  bodies as complete only when the final completion marker is present; otherwise
+  retrieve the missing body with `show`. Compact re-entry lists configured IDs
+  without injecting all bodies again.
 
 ## Retrieval gate
 
