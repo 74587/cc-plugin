@@ -25,7 +25,7 @@ code:
 
 ## 授权与角色边界
 
-两条工作流第一次正式写入前都要求 `llmdoc/` clean，写后必须 validate，失败且无法修复时回滚本次文档写集。它们只授权知识面与临时候选处理，不授权源码编辑。
+两条工作流正式写入前都要求 `llmdoc/` clean，写后必须 validate；无法修复就回滚本次知识写集。授权只覆盖知识面与临时候选，不包含源码。
 
 `init` 只用于没有有效 V3 知识面的仓库；已有 V3 转 update，legacy 结构只能走显式 upgrade。首次知识面先以稳定职责、authority、failure model 与查询词汇识别 domain，再把它们组织为持久 retrieval topic，最后由 `recorder` 为每个决策簇或风险工作流建立 canonical owner。Package 与目录只是边界证据；root singleton 只承载真正跨 topic 的契约。
 
@@ -35,12 +35,12 @@ code:
 
 ## Update 是语义复核
 
-入口由 `status`、`delta` 和显式 `--reflection` 候选共同组成。它们形成复核集合，不是正文写入列表：
+入口状态、delta 和显式 reflection 候选只形成复核集合，不是正文写入列表：
 
 - light：owner 已映射、事实与根因清楚，`recorder` 可用定向证据判断；
 - deep：存在 unmapped、owner/根因不清、边界变化、冲突、影响过广或失效 revision，先由 `investigator` 调查。
 
-reflection candidate 先验证 trigger、错误动作、根因、预防规则、scope 与置信度；用户纠正证明意图，不自动证明仓库事实。通过质量门后仍要经过 Stable Knowledge Gate：只有会改变未来选择、难以快速重建、足够持久且归属明确的规则才进入既有 architecture/guide。瞬时失败、单任务偏好和原始证据留在临时队列。
+reflection candidate 先核实触发、根因、预防规则与适用范围；用户纠正证明意图，不自动证明仓库事实。只有会改变未来选择、难以快速重建、足够持久且归属明确的规则才折入既有 owner；瞬时失败、单任务偏好和原始证据留在临时队列。
 
 代码 delta 同样只产生复核义务。原文失效或出现合格新结论才改写；原文仍成立时标记 verified unchanged，不追加本次 diff、路径库存或证据。
 
@@ -48,8 +48,8 @@ Stable Knowledge Gate 与 Routing Gate 独立：前者决定正文是否值得�
 
 ## 收尾与 revision
 
-`recorder` 负责正文和 validate，calling workflow 负责 `commit`：正文改动与 `--verified` 文档可一次取 fingerprint 并集；全部未改时用 meta-only `commit --verified`；全仓复核才用 `--all`。相关实现仍 dirty 时不得推进 revision。
+`recorder` 负责正文和 validate，calling workflow 用 `commit` 统一收尾；改写 owner 与 verified-unchanged owner 可一起刷新 fingerprint，全仓复核才推进全量 baseline。相关实现 dirty 时不得推进 revision。
 
 fingerprint 锚定真实 commit。rebase/squash 会改写 hash，使台账在 fresh clone 中失效，因此含 fingerprint 的提交应保留历史或在合并后重新全量烙印；不得用 amend 合并 meta follow-up。
 
-reflection 候选只有在成功晋升、确认已覆盖或明确驳回后才移入 resolved；incomplete/failed 保持 pending。工作流只报告既定五态，success 以语义复核、validate 和 commit 闭环为准。
+reflection 候选只有在成功晋升、确认已覆盖或明确驳回后才移入 resolved；未完成或失败时保持 pending。success 以语义复核、validate 和 commit 闭环为准。

@@ -41,20 +41,16 @@ code:
 
 ## 渐进读取模型
 
-读取面按“地图/索引或搜索/正文”逐层暴露，调用者在任一层都可以停止；这些命令返回受预算约束的公开投影，不泄漏内部解析对象。`context --files` 对每个输入独立用 `code.paths` 反查 owner，再对 owner 并集补齐 `relations.requires` 前置闭包；未命中的输入通过 `unmappedFiles` 单独返回，不能被同批查询中的成功命中掩盖。文本与 JSON 输出共用 schema 契约，避免不同宿主形成第二套语义。
+读取面按“地图/索引或搜索/正文”渐进披露，任一层都允许停止。`context --files` 对每个输入独立反查 owner，再为 owner 并集补齐 `requires` 前置闭包；未命中输入必须单独返回，不能被同批成功项掩盖。文本与 JSON 输出共用语义契约，避免宿主分叉。
 
-`search` 的主路径使用运行时 `Intl.Segmenter` 做中文词法分段，使连续 CJK 查询不依赖人工空格；只有词法阶段零召回时才启用确定性的 CJK bigram 降级。降级必须在文本输出中显式注解，并通过 JSON `searchMode` 暴露实际模式，不能把弱匹配静默伪装成正常召回。排序优先奖励完整短语，再比较部分词法命中；bigram 只承担兜底召回，不取代主检索语义。
+`search` 先做中文词法分段，使连续 CJK 查询不依赖人工空格；词法零召回时才降级到确定性的 CJK bigram。降级必须在文本与 JSON 中显式暴露，不能把弱匹配伪装成正常召回；完整短语优先，bigram 只承担兜底。
 
-Viewer 是同一知识面的只读本地投影，不是新的改写入口。服务命令只负责 loopback 生命周期与装配；HTTP 层只接受 GET/HEAD 和显式资产/API 路由，文档读取必须命中 workspace 扫描得到的 canonical ID，不能把请求路径解释成文件系统路径；状态层把 workspace、delta、validate 与 growth 投影为可序列化 DTO，并以 `requires > related > link` 的优先级确定同向关系，反向关系仍独立保留。
-
-浏览器端保持无框架的原生模块边界：model 负责视图模型，graph 负责确定性布局与交互，detail 负责详情导航和安全渲染，app 只协调状态与 UI。服务端防御性响应头与客户端 Markdown 清洗共同构成渲染边界；任何扩展都不能绕过路由白名单、canonical 文档查找或在未清洗时注入 HTML。
+Viewer 是同一知识面的 loopback 只读投影，不是改写入口。请求只能经过显式路由并命中 workspace 扫描出的 canonical 文档 ID，不能解释为任意文件系统路径；服务端响应边界与客户端 Markdown 清洗必须同时保留，扩展也不得绕过。
 
 ## 结构改写不变量
 
-所有路径先经过仓库与 `llmdoc/` realpath 边界校验，符号链接逃逸和覆盖现有目标都会被拒绝。`new` 是唯一允许在缺少 `llmdoc/` 时启动的结构改写：它锁定最近 Git 根并创建知识目录；其他改写仍要求已有 workspace。`adopt` 只登记已有合法正文；`mv` 负责移动及内部引用/ledger key 重写，失败时回滚，不触碰源码。
+所有结构改写都受仓库与 `llmdoc/` realpath 边界约束，拒绝符号链接逃逸和覆盖目标。`new` 是唯一可在缺少 `llmdoc/` 时启动的改写，它锁定最近 Git 根；其他改写要求已有 workspace，失败必须原子回滚且不触碰源码。
 
-`commit` 是正式收尾边界：先 validate 和 revision/dirty 预检，再只提交 `llmdoc/` 写集，最后刷新 fingerprint 并单独提交 `meta.json`。`--verified` 把已复核但无需改正文的文档纳入 fingerprint，可形成 meta-only commit；有正文改动时，changed 与 verified 文档取并集。`--all` 表示全量复核，不能与 `--verified` 同用。
-
-预检失败必须在创建任何 commit 前 fail-closed，用户已 staged 的非 llmdoc 文件不得被卷入。fingerprint 锚定正文提交前后的真实 HEAD，因此不得用 `--amend` 把 meta 追进前一提交。
+`commit` 是正式收尾边界：先 validate 和 revision/dirty 预检，只提交 `llmdoc/` 写集，再刷新 fingerprint 并单独提交 `meta.json`；已复核但正文未变的 owner 也可纳入 fingerprint。预检失败必须在任何 commit 前 fail-closed，不能卷入用户已 staged 的非 llmdoc 文件，也不得用 amend 合并 meta follow-up。
 
 `prune` 与 `upgrade` 的 CLI 只负责可重复的诊断；合并、删除、迁移和知识价值判断始终由工作流层交给 `recorder`。

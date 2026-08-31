@@ -18,7 +18,7 @@ code:
 
 ## 消费与开发边界
 
-公开产物是 `@tokenroll/llmdoc` CLI；仓库根 package 只是私有开发工作区。消费项目通过外部 npx/global 安装使用 CLI，不把 llmdoc 写进自己的依赖和 lockfile。根工作区直接声明的 `gray-matter` 只供 `scripts/check-codex-surface.mjs` 解析 skill front matter，不是消费方依赖，也没有为 CLI 新增 runtime 依赖。
+公开产物是 `@tokenroll/llmdoc` CLI，仓库根 package 只是私有开发工作区。消费项目从外部使用 CLI，不把 llmdoc 写进自己的依赖和 lockfile；开发工作区依赖不得泄漏为 CLI runtime 依赖。
 
 ## 非平凡编辑前先同步
 
@@ -26,9 +26,7 @@ code:
 
 ## 变更集同步不变量
 
-CLI 命令或输出语义变化必须在同一 change-set 同步：canonical skills/agents、生成的 Codex 表面、版本与 lockfile、双语 README/design docs，以及 dogfood `llmdoc/`。精确文件数量由自动化维护，不在正文复制。
-
-`scripts/check-codex-surface.mjs` 负责版本、身份与生成正文 parity；CI 还运行 lint、typecheck、test、build、prompt budget、dogfood validate 和消费者安装 smoke。自动化通过后仍需审查语义是否在所有公开表面一致，特别是宿主 UI policy 与授权边界。
+CLI 命令或输出语义变化必须在同一 change-set 同步 canonical prompt、生成宿主表面、版本元数据、公开文档和 dogfood knowledge；精确文件集合交给自动化。机械校验通过后仍需人工审查宿主 policy、授权边界和公开语义是否一致。
 
 ## Lifecycle hook 发布验证
 
