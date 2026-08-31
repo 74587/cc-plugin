@@ -14,16 +14,16 @@ export function runFingerprint(options: FingerprintOptions): unknown {
   const targetPaths = options.update?.map((value) => (value.startsWith("llmdoc/") ? value.slice("llmdoc/".length) : value)) ?? [];
 
   if (options.all && targetPaths.length > 0) {
-    throw new CliError("fingerprint 不能同时使用 --all 与 --update。");
+    throw new CliError("fingerprint cannot use --all and --update together.");
   }
 
   if (!options.all && targetPaths.length === 0) {
-    throw new CliError("fingerprint 需要 --all 或 --update <path...>。");
+    throw new CliError("fingerprint requires --all or --update <path...>.");
   }
 
   for (const docPath of targetPaths) {
     if (!workspace.documentsByLlmdocPath.has(docPath)) {
-      throw new CliError(`文档不存在: ${docPath}`);
+      throw new CliError(`Document does not exist: ${docPath}`);
     }
   }
 

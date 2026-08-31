@@ -30,3 +30,5 @@ code:
 `website/` 是与 CLI 开发工作区分离构建的静态站点，通过 Cloudflare Static Assets 发布。部署面没有应用后端、持久状态或仓库数据 binding；改变这一点属于产品和安全边界变更，必须重新评估数据所有权、访问控制与第二真相源风险，而不是作为普通页面功能加入。
 
 中英文页面与 `llms.txt` 共同组成公开知识投影。CLI、宿主安装、知识门或维护工作流的语义变化时，应复核这些表面的语义一致性；当前一致性依赖人工维护，不能假设已有机械 parity 保证。
+
+config JSON Schema 是例外的机器可读产品契约：canonical 定义仍由 CLI runtime 拥有，官网在 `https://llmdoc.tokenroll.ai/schemas/config.schema.json` 发布其静态投影，供配置文件的 `$schema`、编辑器补全与外部校验使用。网站构建后的产物必须在 CI 中与 CLI source 做结构等价检查；公开 URL 可达但内容漂移同样属于发布失败。

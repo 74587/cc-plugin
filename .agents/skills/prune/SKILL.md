@@ -37,6 +37,7 @@ This command does not authorize source-code edits.
 
 2. Decide the convergence plan with `recorder`.
    - If the plan moves ownership, changes topic boundaries, or merges/splits documents, read [Knowledge Topology and Context Floor](../llmdoc/references/knowledge-topology.md) before rewriting.
+   - Read [Startup Configuration](../llmdoc/references/startup-config.md) when the report lists startup preload references. Update or remove affected config entries in the same write set before merging or deleting their documents; `mv` handles direct renames automatically.
    - Merge duplicated docs.
    - Rewrite fragmented docs when a clearer topic boundary exists.
    - Apply the Stable Knowledge Gate sentence by sentence. Remove command/file inventories, current-state evidence, and other facts that a reader can cheaply recover from canonical sources.
@@ -45,6 +46,7 @@ This command does not authorize source-code edits.
    - Delete a document when it has no unique durable knowledge; canonical source, schema, help, or tests are valid destinations for discarded evidence. Do not copy low-value content elsewhere merely to justify deletion.
 
 3. Re-validate the result.
+   - Confirm every configured startup preload still targets the surviving owner document.
    - Run `validate`.
    - When ownership or routing changed, run the reference's scoped concept, per-file owner, broad-glob precision, and prerequisite checks; structural validation alone is insufficient.
    - Re-run `prune --report` and compare document/token scale with the first report.

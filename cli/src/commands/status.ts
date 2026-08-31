@@ -53,7 +53,7 @@ export function runStatus(options: StatusOptions): unknown {
   if (unmapped.length > 0) {
     const shown = unmapped.slice(0, 5);
     const rest = unmapped.length - shown.length;
-    lines.push(`unmapped changes (${unmapped.length}): ${shown.join(", ")}${rest > 0 ? ` … +${rest} more (--json 查看全部)` : ""}`);
+    lines.push(`unmapped changes (${unmapped.length}): ${shown.join(", ")}${rest > 0 ? ` … +${rest} more (use --json for all)` : ""}`);
   }
   lines.push(growthLabel);
   if (delta.git.degradedReason) {

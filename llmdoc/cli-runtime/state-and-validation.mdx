@@ -1,11 +1,13 @@
 ---
-description: Workspace 边界、结构校验与 glob 有效性、revision/delta 影响扩展及 hook 信号契约。
+description: Workspace/config 快照、startup context 降级语义、revision/delta 影响扩展及 hook fail-open 契约。
 kind: architecture
 code:
   paths:
+    - cli/src/types.ts
     - cli/src/lib/fs.ts
     - cli/src/lib/workspace.ts
     - cli/src/lib/state.ts
+    - cli/src/lib/config.ts
     - cli/src/lib/git.ts
     - cli/src/lib/output-schema.ts
     - cli/src/lib/repository-health.ts
@@ -21,9 +23,11 @@ code:
     - cli/tests/viewer-state.test.ts
     - cli/tests/viewer-http.test.ts
     - cli/tests/cold-start.test.ts
+    - cli/schemas/config.schema.json
     - cli/schemas/doc-frontmatter.schema.json
     - cli/schemas/meta.schema.json
     - cli/schemas/output.schema.json
+    - llmdoc.config.json
 ---
 
 # 状态面与校验面
@@ -35,6 +39,16 @@ code:
 `validate` 保证结构、引用、代码锚点、realpath 边界与 ledger 一致，并拒绝不存在的精确路径或空匹配 glob。它只证明结构有效，不判断 glob 是否吸附无关文件或 first-class owner 是否缺失；这些语义问题属于 Routing Gate 与 Context Floor。
 
 `init-state` 的 baseline 必须锚定真实 HEAD；unborn branch 先创建首次提交。Git、HEAD 或 ledger 前置失败必须给出对应 remedy，不能折叠成模糊错误。
+
+## Startup 配置控制面
+
+只要仓库存在 `llmdoc/`，SessionStart 就在状态信号后默认注入一份完整而最小的 operating guidance。它保留开始广泛探索前先加载 skill 并经 CLI 检索、非平凡计划或编辑前与用户对齐、主动按职责委派 investigator/recorder/reflector，以及持久知识变化后用 update 收尾这些护栏；详细协议仍只由 skill 正文拥有。
+
+仓库可在 CLI 解析出的 project root 放置可选的 `llmdoc.config.json`，当前契约以 `schema: "llmdoc.config/v1"` 显式定版。配置在 `loadWorkspace` 时加载、规范化并挂入 `WorkspaceData`，使 validate、hook 与结构改写消费同一快照，不能各自重读后形成不同解释。仓库自身保留一份有效配置作为这条跨命令路径的 dogfood。
+
+`startup.remindSkill` 默认为 `true`，只有显式设为 `false` 才关闭默认 guidance；`startup.preload` 按声明顺序列出 project root 内已有的精确 `.mdx` 文档 ID，可省略 `llmdoc/` 前缀。JSON 或 schema 无效时无法保留字段意图，hook 回到默认 reminder 并跳过 preload；schema 有效而 preload 路径无效或缺失时，只跳过整组 preload，仍保留有效的 `remindSkill`。规范化后等价的重复项则 warning、去重并继续，不把写法别名升级成阻塞错误。
+
+冷 SessionStart 按序直接注入完整正文，不设置 llmdoc 字符或 token 预算；只有最终 completion marker 可见时，Agent 才能假定正文完整并跳过重复 `search`/`show`，否则按缺失文档回退检索。compact 重入只列出配置文档 ID，不再次注入正文，避免刚压缩的上下文被固定 startup pack 立即填回。
 
 ## Revision 与影响语义
 
@@ -48,4 +62,6 @@ revision 推进前必须确认 Git 可推进且目标 owner 的关联实现无 d
 
 ## Hook 信号边界
 
-hook 只读且 fail-open。代码更新信号来自过滤后的 impact/unmapped 路径；`llmdoc/**`、临时目录和 ignore 命中项不制造代码陈旧。pending reflection 候选另行计数，即使没有代码 delta 也能提示 reflection update。compact 只延续候选标识和必要 `LLMDOC_STATE`，不复制 transcript。
+hook 只读且 fail-open。SessionStart 遇到配置问题时保留基础状态信号与校验指引，并按 schema 是否仍可解释字段采用上述分级降级；状态或配置读取异常也不能阻塞宿主会话。
+
+代码更新信号来自过滤后的 impact/unmapped 路径；`llmdoc.config.json` 属于知识控制面，与 `llmdoc/**`、临时目录和 ignore 命中项一样，不制造 implementation delta、unmapped 或 relevant-commit 陈旧信号。pending reflection 候选另行计数，即使没有代码 delta 也能提示 reflection update。compact 只延续候选标识和必要 `LLMDOC_STATE`，不复制 transcript。

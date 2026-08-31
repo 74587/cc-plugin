@@ -8,6 +8,7 @@
     "dev": "astro dev",
     "check": "astro check",
     "build": "astro build",
+    "check:schema": "node scripts/check-published-schema.mjs",
     "preview": "astro preview",
     "cf:dev": "npm run build && wrangler dev",
     "cf:dry-run": "npm run build && wrangler deploy --dry-run"

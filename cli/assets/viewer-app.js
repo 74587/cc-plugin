@@ -58,7 +58,7 @@ async function loadState() {
     const response = await fetch("/api/state", { headers: { accept: "application/json" } });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const nextState = await response.json();
-    if (!Array.isArray(nextState.nodes) || !Array.isArray(nextState.edges)) throw new Error("服务返回了无效状态");
+    if (!Array.isArray(nextState.nodes) || !Array.isArray(nextState.edges)) throw new Error("The server returned invalid state");
     state = nextState;
     topicColors = createTopicColors(state.nodes);
     if (selectedDocument && !state.nodes.some((node) => node.path === selectedDocument)) selectedDocument = null;
@@ -83,15 +83,15 @@ function renderHeader() {
   const baseline = state.baseline;
   const shortRevision = baseline.revision?.slice(0, 7);
   if (!baseline.revision) {
-    setChip(elements.statBaseline, "baseline 缺失", "bad");
+    setChip(elements.statBaseline, "baseline missing", "bad");
   } else if (baseline.degradedReason || baseline.relevantBehindHead === null) {
-    setChip(elements.statBaseline, `baseline ${shortRevision} · 状态未知`, "warn");
+    setChip(elements.statBaseline, `baseline ${shortRevision} · status unknown`, "warn");
   } else if (baseline.relevantBehindHead > 0) {
-    setChip(elements.statBaseline, `baseline ${shortRevision} · ${baseline.relevantBehindHead} 个源码提交待复核`, "warn");
+    setChip(elements.statBaseline, `baseline ${shortRevision} · ${baseline.relevantBehindHead} source commit(s) need review`, "warn");
   } else if (baseline.metadataOnlyBehind) {
-    setChip(elements.statBaseline, `baseline ${shortRevision} · metadata-only，知识干净`, "ok");
+    setChip(elements.statBaseline, `baseline ${shortRevision} · metadata-only, knowledge clean`, "ok");
   } else {
-    setChip(elements.statBaseline, `baseline ${shortRevision} · 最新`, "ok");
+    setChip(elements.statBaseline, `baseline ${shortRevision} · current`, "ok");
   }
 
   const validation = state.validate;
@@ -103,9 +103,9 @@ function renderHeader() {
 
   const stale = state.nodes.filter((node) => node.status !== "fresh").length;
   const unmapped = state.delta.unmappedCommittedPaths.length + state.delta.unmappedDirtyPaths.length;
-  if (stale) setChip(elements.statDelta, `${stale} 份待同步 · 建议 ${state.delta.suggestedMode}`, "warn");
-  else if (unmapped) setChip(elements.statDelta, `${unmapped} 个未映射变化 · 建议 ${state.delta.suggestedMode}`, "warn");
-  else setChip(elements.statDelta, "知识面新鲜", "ok");
+  if (stale) setChip(elements.statDelta, `${stale} document(s) pending · ${state.delta.suggestedMode} recommended`, "warn");
+  else if (unmapped) setChip(elements.statDelta, `${unmapped} unmapped change(s) · ${state.delta.suggestedMode} recommended`, "warn");
+  else setChip(elements.statDelta, "knowledge is current", "ok");
 }
 
 function setChip(chip, text, stateClass) {
@@ -154,7 +154,7 @@ function renderSidebar() {
       fragment.append(item);
     }
   }
-  if (!fragment.childNodes.length) fragment.append(element("div", "empty-list", "没有匹配的文档"));
+  if (!fragment.childNodes.length) fragment.append(element("div", "empty-list", "No matching documents"));
   elements.documentList.replaceChildren(fragment);
 }
 
@@ -195,7 +195,7 @@ async function selectDocument(path) {
 }
 
 function showError(message) {
-  elements.error.textContent = `Viewer 加载失败：${message}`;
+  elements.error.textContent = `Viewer load failed: ${message}`;
   elements.error.hidden = false;
 }
 

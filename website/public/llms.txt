@@ -21,6 +21,10 @@ Repository: https://github.com/TokenRollAI/llmdoc
 - https://llmdoc.tokenroll.ai/zh/docs/workflows/
 - https://llmdoc.tokenroll.ai/zh/docs/cli/
 
+## Machine-readable schemas
+
+- https://llmdoc.tokenroll.ai/schemas/config.schema.json
+
 ## CLI
 
 Treat llmdoc as external tooling. Do not add it to the consumer project's package.json or lockfile.

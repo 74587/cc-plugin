@@ -27,8 +27,6 @@ for (const [relativePath, limit] of limits) {
 }
 
 const hookCases = [
-  { mode: "session-start", limit: 200, stdin: JSON.stringify({ source: "startup" }) },
-  { mode: "session-start", limit: 200, stdin: JSON.stringify({ source: "compact" }) },
   { mode: "stop", limit: 300, stdin: "{}", json: true },
   { mode: "compact", limit: 300, stdin: "{}", json: true }
 ];

@@ -19,19 +19,19 @@ export function runInitState(options: InitStateOptions): unknown {
   const rootDir = findProjectRoot(options.cwd);
   const workspace = loadWorkspace(rootDir);
   if (workspace.meta) {
-    throw new CliError("llmdoc/meta.json 已存在;init-state 只用于首次建立台账,不覆盖现有状态。");
+    throw new CliError("llmdoc/meta.json already exists; init-state creates only the initial ledger and never overwrites it.");
   }
   const git = readWorkspaceGitState(workspace);
   if (!git.available) {
-    throw new CliError("init-state 需要 Git 仓库；请先运行 `git init` 并创建一次真实的初始提交。");
+    throw new CliError("init-state requires a Git repository. Run `git init` and create a real initial commit first.");
   }
   if (!git.headRevision) {
     if (isUnbornHead(rootDir)) {
       throw new CliError(
-        "HEAD 尚无 commit（当前分支尚未创建首次提交）。请先创建一次真实的初始提交；空仓库可运行 `git commit --allow-empty -m \"chore: initial commit\"`。"
+        "HEAD has no commit (the current branch is unborn). Create a real initial commit first; an empty repository can run `git commit --allow-empty -m \"chore: initial commit\"`."
       );
     }
-    throw new CliError(`${git.degradedReason ?? "无法解析 HEAD commit。"}请先修复 Git HEAD，再运行 init-state。`);
+    throw new CliError(`${git.degradedReason ?? "Unable to resolve the HEAD commit."} Repair Git HEAD before running init-state.`);
   }
 
   const now = new Date().toISOString().replace(/\.\d+Z$/, "Z");
@@ -60,5 +60,5 @@ export function runInitState(options: InitStateOptions): unknown {
         "npx -y @tokenroll/llmdoc validate && npx -y @tokenroll/llmdoc commit --all -m \"docs: bootstrap llmdoc\""
     };
   }
-  return `initialized llmdoc/meta.json: ${workspace.documents.length} documents (validatedRevision: null), baseline ${git.headRevision.slice(0, 7)}\nnext: 先运行 \`npx -y @tokenroll/llmdoc validate\`；全部通过后运行 \`npx -y @tokenroll/llmdoc commit --all -m "docs: bootstrap llmdoc"\` 收尾`;
+  return `initialized llmdoc/meta.json: ${workspace.documents.length} documents (validatedRevision: null), baseline ${git.headRevision.slice(0, 7)}\nnext: Run \`npx -y @tokenroll/llmdoc validate\` first. After it passes, finish with \`npx -y @tokenroll/llmdoc commit --all -m "docs: bootstrap llmdoc"\`.`;
 }

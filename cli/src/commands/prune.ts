@@ -19,20 +19,22 @@ interface CandidatePair {
 export function runPrune(options: PruneOptions): unknown {
   if (!options.report) {
     return options.json
-      ? { status: "dry_run", message: "prune 当前仅支持 --report。", writable: false }
-      : "prune 当前仅支持 --report。";
+      ? { status: "dry_run", message: "prune currently supports only --report.", writable: false }
+      : "prune currently supports only --report.";
   }
 
   const workspace = loadWorkspace(options.cwd);
   const growth = computeGrowthState(workspace);
   const duplicateCandidates = findDuplicateCandidates(workspace.documents);
   const mergeCandidates = findMergeCandidates(workspace.documents);
+  const startupPreloads = workspace.llmdocConfig.preloadPaths.map((preloadPath) => `llmdoc/${preloadPath}`);
 
   if (options.json) {
     return {
       status: "dry_run",
       writable: false,
       growth,
+      startupPreloads,
       duplicateCandidates: duplicateCandidates.map((candidate) => ({
         paths: [`llmdoc/${candidate.left.llmdocPath}`, `llmdoc/${candidate.right.llmdocPath}`],
         score: candidate.score,
@@ -52,7 +54,14 @@ export function runPrune(options: PruneOptions): unknown {
       ? `growth: ${growth.currentDocumentCount} docs, ~${growth.currentTotalEstimatedTokens} tokens (no convergence baseline)`
       : `growth: ${growth.currentDocumentCount} docs, ~${growth.currentTotalEstimatedTokens} tokens; baseline ${growth.baselineDocumentCount} docs, ~${growth.baselineTotalEstimatedTokens} tokens; delta ${growth.documentDelta}, ~${growth.tokenDelta} tokens; ${growth.exceedsGate ? "above gate" : "below gate"}`;
 
-  const lines = [growthLine, ""];
+  const lines = [growthLine, "", "startup preload references:"];
+  if (startupPreloads.length === 0) {
+    lines.push("  none");
+  } else {
+    lines.push(...startupPreloads.map((preloadPath) => `  ${preloadPath}`));
+    lines.push("  Keep llmdoc.config.json synchronized when merging or deleting these documents.");
+  }
+  lines.push("");
   lines.push("duplicate candidates:");
   if (duplicateCandidates.length === 0) {
     lines.push("  none");

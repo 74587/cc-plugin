@@ -6,9 +6,7 @@ allowed-tools: Read, Glob, Grep, Bash, Write, Edit, WebSearch, WebFetch
 
 # /llmdoc
 
-The operating protocol for V3 `llmdoc` projects. `llmdoc/` holds the architecture, constraints, and working agreements that source code does not cheaply give back; the CLI is how you reach them.
-
-Every command below runs as `npx -y @tokenroll/llmdoc <cmd>`; the CLI Invocation section holds the full rules.
+Use the CLI to retrieve durable architecture, constraints, and working agreements from V3 `llmdoc/` projects. Run commands as `npx -y @tokenroll/llmdoc <cmd>`.
 
 ## Retrieval Gate
 
@@ -48,6 +46,7 @@ These entry points are alternatives, not a sequence. Stop as soon as the task ha
 - If `llmdoc/` does not exist, suggest `/llmdoc:init`; do not fabricate the knowledge surface ad hoc.
 - When a task produces durable knowledge changes, suggest `/llmdoc:update` at the end.
 - For topology or routing work, read [Knowledge Topology](references/knowledge-topology.md).
+- For SessionStart reminders or document preload, read [Startup Configuration](references/startup-config.md).
 - Never suggest `/llmdoc:upgrade`; it runs only when the user asks for it by name.
 
 ## Reflection Gate

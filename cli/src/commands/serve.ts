@@ -17,7 +17,7 @@ interface ServeOptions {
 // 长驻前台进程：启动本地 Viewer，Ctrl-C 退出。仅绑定 127.0.0.1，不对外暴露。
 export async function runServe(options: ServeOptions): Promise<string> {
   const server = await startViewerServer(options.cwd, options.port ?? 4973);
-  process.stdout.write(`llmdoc viewer: ${server.url}  (Ctrl-C 退出)\n`);
+  process.stdout.write(`llmdoc viewer: ${server.url}  (press Ctrl-C to stop)\n`);
   await new Promise<void>((resolve, reject) => {
     const shutdown = (): void => {
       process.off("SIGINT", shutdown);

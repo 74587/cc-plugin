@@ -14,7 +14,7 @@ interface ContextOptions extends OutputOptions {
 
 export function runContext(options: ContextOptions): unknown {
   if (options.files.length === 0) {
-    throw new CliError("context 需要至少一个 --files 输入。");
+    throw new CliError("context requires at least one --files input.");
   }
 
   const workspace = loadWorkspace(options.cwd);

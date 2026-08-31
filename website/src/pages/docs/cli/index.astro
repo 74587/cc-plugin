@@ -24,14 +24,14 @@ import DocsLayout from "../../../layouts/DocsLayout.astro";
   <dl class="commands">
     <div><dt><code>status</code></dt><dd>Validity, baseline, dirty, and growth signals.</dd></div>
     <div><dt><code>delta</code></dt><dd>Changed code to impacted-document closure.</dd></div>
-    <div><dt><code>validate</code></dt><dd>Schema, structure, relations, links, code paths—including zero-match globs—and ledger consistency.</dd></div>
+    <div><dt><code>validate</code></dt><dd>Schema, structure, relations, links, code paths—including zero-match globs—ledger consistency, and optional startup config.</dd></div>
   </dl>
 
   <h2>Mutate safely</h2>
   <dl class="commands">
     <div><dt><code>new &lt;path&gt; --kind &lt;kind&gt;</code></dt><dd>Scaffold a V3 document, creating the first <code>llmdoc/</code> directory at the nearest Git root when needed.</dd></div>
     <div><dt><code>adopt &lt;path…&gt;</code></dt><dd>Register valid existing documents without rewriting their bodies.</dd></div>
-    <div><dt><code>mv &lt;from&gt; &lt;to&gt;</code></dt><dd>Move a document and rewrite internal references transactionally.</dd></div>
+    <div><dt><code>mv &lt;from&gt; &lt;to&gt;</code></dt><dd>Move a document and transactionally rewrite internal references, ledger identity, and matching startup preload entries.</dd></div>
     <div><dt><code>init-state</code></dt><dd>Seed the first ledger on a real Git HEAD; an unborn repository must create its initial commit first.</dd></div>
     <div><dt><code>commit [--verified &lt;path…&gt; | --all]</code></dt><dd>Validate, commit changed prose, and refresh changed or verified revisions.</dd></div>
     <div><dt><code>fingerprint --update &lt;path…&gt; | --all</code></dt><dd>Refresh validated revisions in the ledger.</dd></div>
@@ -39,10 +39,24 @@ import DocsLayout from "../../../layouts/DocsLayout.astro";
 
   <h2>Explicit operations and hooks</h2>
   <dl class="commands">
-    <div><dt><code>prune --report</code></dt><dd>Read-only convergence signals.</dd></div>
+    <div><dt><code>prune --report</code></dt><dd>Read-only convergence signals, including startup preload references that a manual merge or deletion must preserve.</dd></div>
     <div><dt><code>upgrade</code></dt><dd>Explicit V2 migration diagnostics.</dd></div>
     <div><dt><code>hook session-start | stop | compact</code></dt><dd>Read-only, fail-open host signals.</dd></div>
   </dl>
+
+  <h2>Startup context config</h2>
+  <p>An optional <code>llmdoc.config.json</code> at the llmdoc workspace root—the nearest Git root that owns <code>llmdoc/</code> in a Git repository—can make SessionStart proactively remind the agent to use the llmdoc skill and preload exact documents:</p>
+  <pre><code>&#123;
+  "$schema": "https://llmdoc.tokenroll.ai/schemas/config.schema.json",
+  "schema": "llmdoc.config/v1",
+  "startup": &#123;
+    "remindSkill": true,
+    "preload": ["architecture.mdx", "api-client/contracts.mdx"]
+  &#125;
+&#125;</code></pre>
+  <p>The <a href="/schemas/config.schema.json">published schema</a> enables editor validation. Operating guidance is enabled by default; set <code>remindSkill</code> to <code>false</code> to disable it. Cold-start preload order is preserved and has no llmdoc character or token budget. A final completion marker exposes likely host-side truncation; compact re-entry lists document IDs without injecting their bodies again.</p>
+  <p><code>validate</code> rejects invalid or missing paths and warns while deduplicating normalized aliases. The hook remains fail-open: unreadable JSON/schema uses the default reminder, while preload-only errors preserve a valid <code>remindSkill</code> choice and skip preload.</p>
+  <p>All fixed CLI interface text is English. Chinese queries and repository document content remain supported and are returned unchanged.</p>
 </DocsLayout>
 
 <style>

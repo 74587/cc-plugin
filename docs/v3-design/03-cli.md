@@ -43,11 +43,13 @@ CLI 是 V3 的 Runtime 实体:所有确定性、可测试、重复出现的工�
 
 | 命令 | 输出 |
 |---|---|
-| `llmdoc hook session-start` | ≤200 token 状态信号:是否存在 llmdoc、可执行 delta、pending 反思候选数、冷启动还是 compact 重入 |
+| `llmdoc hook session-start` | 输出状态信号与默认最小操作守则；workspace 根 `llmdoc.config.json` 可关闭守则或让冷启动追加指定正文，compact 重入只列配置 ID |
 | `llmdoc hook stop` | best-effort 提醒:代码 delta 或 pending 反思候选是否触发 update 判断;候选可在无代码变化时独立触发 |
 | `llmdoc hook compact` | 输出 LLMDOC_STATE 保存指令(要求 summary 保留:目标、已读文档路径、关键结论、lesson candidates、下一步) |
 
-Fail policy:hook 执行失败不阻塞开发;hook 永不写 `llmdoc/`;写命令不依赖 hook 才正确。反思信号只统计 `.llmdoc-tmp/reflections/pending/` 直属 Markdown 文件,不读取内容、stdin 或完整 transcript。
+`llmdoc.config.json` 使用 `llmdoc.config/v1` schema；`startup.remindSkill` 默认为 `true`，控制是否注入 operating guidance，`startup.preload` 按顺序列出冷启动时直接进入 context 的精确文档 ID。llmdoc 不对冷启动 preload 设置字符/token 预算，并用结尾完成标记暴露可能的宿主截断；compact 重入不重复正文，只列 ID。`validate` 负责 schema、路径存在性与规范化去重；重复别名只 warning，preload 单项错误不会重置合法的 `remindSkill`。配置本身属于知识控制面，不进入 implementation delta/unmapped 信号。
+
+Fail policy:hook 执行失败不阻塞开发;hook 永不写 `llmdoc/`;写命令不依赖 hook 才正确。JSON/schema 不可用时 SessionStart 保留状态与默认 guidance；schema 合法但 preload 有错时保留 `remindSkill` 并跳过 preload。CLI 的固定用户可见文案（help、text/JSON message、hook 与 Viewer UI/error）统一为英文；中文检索输入和文档内容不翻译。反思信号只统计 `.llmdoc-tmp/reflections/pending/` 直属 Markdown 文件,不读取内容、stdin 或完整 transcript。
 
 ### 2.4 维护面
 
@@ -55,8 +57,8 @@ Fail policy:hook 执行失败不阻塞开发;hook 永不写 `llmdoc/`;写命令�
 |---|---|
 | `llmdoc new <path> --kind <k>` | 脚手架:生成带合法 front matter 的空文档；最近 Git 根尚无 `llmdoc/` 时自动创建，并在缺少 ledger 时提示后续 `init-state` |
 | `llmdoc adopt <path...>` | 无损登记:把已存在的合法 `.mdx` 登记进 `meta.json`(`validatedRevision: null`,不改正文,幂等) |
-| `llmdoc mv <from> <to>` | 重命名/移动:`git mv` + 批量更新引用与 ledger key |
-| `llmdoc prune --report` | growth 报告:当前规模 vs convergence baseline、重复/碎片候选(只报告,收敛动作由 Recorder 做) |
+| `llmdoc mv <from> <to>` | 重命名/移动:`git mv` + 批量更新正文引用、ledger key 与 config preload |
+| `llmdoc prune --report` | growth 报告:当前规模、重复/碎片候选与 config preload 引用(只报告,收敛动作由 Recorder 做) |
 | `llmdoc upgrade` | 盘点 legacy/V2 到 V3 的迁移需求(惰性加载:不被其他命令引用,正常上下文零出现) |
 | `llmdoc serve [--port]` | **Web Viewer**:一键启动本地 HTTP 服务(仅绑定 127.0.0.1),浏览文档结构、关系图与新鲜度,Ctrl-C 退出 |
 

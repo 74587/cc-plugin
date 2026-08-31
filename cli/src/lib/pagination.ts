@@ -27,7 +27,7 @@ export function paginate<T>({ items, estimate, options }: PaginateInput<T>): Pag
   const offset = decodeCursor(options.cursor);
 
   if (offset < 0 || offset > items.length) {
-    throw new CliError("cursor 非法或已失效。");
+    throw new CliError("The cursor is invalid or expired.");
   }
 
   const selected: T[] = [];
@@ -89,6 +89,6 @@ function decodeCursor(cursor: string | undefined): number {
     }
     return payload.offset;
   } catch {
-    throw new CliError("cursor 非法或已损坏。");
+    throw new CliError("The cursor is invalid or corrupted.");
   }
 }

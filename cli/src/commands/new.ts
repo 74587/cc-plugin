@@ -24,7 +24,7 @@ export function runNew(options: NewOptions): unknown {
   assertDocKindMatchesShape(shape);
   const absolutePath = resolveInsideRoot(rootDir, repoRelativePath, { allowMissing: true });
   if (fs.existsSync(absolutePath)) {
-    throw new CliError(`目标已存在: ${repoRelativePath}`);
+    throw new CliError(`Target already exists: ${repoRelativePath}`);
   }
 
   ensureDirectory(absolutePath);
@@ -33,7 +33,7 @@ export function runNew(options: NewOptions): unknown {
   // description 经 JSON.stringify 得到合法的 YAML double-quoted scalar,防止引号/冒号/换行破坏 front matter;
   // replace 一律用函数形式,避免 $& 等替换模式展开。
   const content = template
-    .replace("__DESCRIPTION__", () => JSON.stringify(options.description ?? "TODO: 补充文档描述。"))
+    .replace("__DESCRIPTION__", () => JSON.stringify(options.description ?? "TODO: Add a document description."))
     .replace("__KIND__", () => kind)
     .replace("__TITLE__", () => title);
 
@@ -46,18 +46,18 @@ export function runNew(options: NewOptions): unknown {
       created: repoRelativePath,
       next: metaExists
         ? null
-        : "若 HEAD 尚无 commit，请先创建首次 Git 提交；然后运行 `npx -y @tokenroll/llmdoc init-state`。"
+        : "If HEAD has no commit, create the initial Git commit, then run `npx -y @tokenroll/llmdoc init-state`."
     };
   }
   return metaExists
     ? `created: ${repoRelativePath}`
-    : `created: ${repoRelativePath}\nnext: 若仓库尚无提交，请先创建首次 Git 提交；然后运行 \`npx -y @tokenroll/llmdoc init-state\` 建立台账。`;
+    : `created: ${repoRelativePath}\nnext: If the repository has no commit, create the initial Git commit, then run \`npx -y @tokenroll/llmdoc init-state\` to create the ledger.`;
 }
 
 function normalizeDocDestination(input: string): string {
   const repoRelativePath = normalizeRepoRelativePath(input.startsWith("llmdoc/") ? input : `llmdoc/${input}`);
   if (!repoRelativePath.startsWith("llmdoc/") || !repoRelativePath.endsWith(".mdx")) {
-    throw new CliError("new 只能创建 llmdoc/ 下的 .mdx 文档。");
+    throw new CliError("new can create only .mdx documents under llmdoc/.");
   }
   return repoRelativePath;
 }

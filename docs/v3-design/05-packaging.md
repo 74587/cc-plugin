@@ -52,7 +52,8 @@ llmdoc-repository/                  # 根 = 标准 Claude Code plugin
 共同约束:
 
 - upgrade 入口禁止隐式调用,正文惰性加载;
-- hook 只注入短状态信号,失败不阻塞开发;
+- hook 注入状态和默认最小操作守则,失败不阻塞开发;
+- 消费仓库可用 workspace 根 `llmdoc.config.json` 关闭默认 guidance 或增加精确文档 preload；冷启动不设 llmdoc context 预算并带完成标记，compact 重入只列 ID；preload 字段错误不重置合法 reminder;
 - hook 的 `npx --package` 使用 npm alias 指向 `@tokenroll/llmdoc`,避免宿主仓库中同名但缺失 bin 的 local/file dependency 抢先满足解析;
 - 插件不复制 CLI 已承担的机械逻辑。
 
@@ -60,7 +61,8 @@ llmdoc-repository/                  # 根 = 标准 Claude Code plugin
 
 - lint + CLI 单元/集成测试;
 - `llmdoc validate` 跑本仓库 dogfood `llmdoc/`;
-- prompt 预算检查:operating skill、各命令 SOP、hook 输出的 token 上限(超限 fail);
+- prompt 预算检查:operating skill、各命令 SOP,以及 Stop/PreCompact hook 输出上限;SessionStart 不设预算;
+- website check/build 并验证产品域名下发布的 config schema 与 CLI 事实源结构一致;
 - 发布:npm 发布 `@tokenroll/llmdoc`,插件随 tag 打包。
 
 ## 4. 实施阶段

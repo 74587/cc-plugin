@@ -1,13 +1,12 @@
 {
-  "description": "V3 llmdoc hooks delegated to the scoped llmdoc CLI through an npm alias that cannot be shadowed by a same-name local dependency. Missing packages are installed non-interactively; SessionStart may return plain text, while Stop and PreCompact return JSON on success.",
+  "description": "V3 llmdoc hooks delegated to the scoped llmdoc CLI through an npm alias that cannot be shadowed by a same-name local dependency. Missing packages are installed non-interactively; SessionStart may return plain text (delta status, configurable operating guidance, cold-start document preload, or compact re-entry document IDs), while Stop and PreCompact return JSON on success.",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y --package=@tokenroll/llmdoc-hook-runtime@npm:@tokenroll/llmdoc -- llmdoc hook session-start",
-            "additionalContextLimit": 1200
+            "command": "npx -y --package=@tokenroll/llmdoc-hook-runtime@npm:@tokenroll/llmdoc -- llmdoc hook session-start"
           }
         ]
       }

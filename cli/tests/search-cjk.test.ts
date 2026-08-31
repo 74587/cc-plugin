@@ -96,7 +96,7 @@ kind: reference
     expect(payload.results[0]?.path).toBe("llmdoc/devices/throughput.mdx");
 
     const textResult = await runCli(["search", "吞吐量"], rootDir);
-    expect(textResult.stdout).toContain("已使用 CJK bigram 降级检索");
+    expect(textResult.stdout).toContain("CJK bigram fallback was used");
 
     const noisyLongQuery = await runCli(["--json", "search", "吞吐量完全未知"], rootDir);
     const noisyPayload = JSON.parse(noisyLongQuery.stdout) as SearchPayload;

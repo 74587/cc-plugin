@@ -28,14 +28,14 @@
 ### 3.1 日常任务
 
 ```text
-SessionStart hook → 一行状态信号
+SessionStart hook → 状态信号 + 默认最小操作守则(可由 config 关闭)
 → (需要 llmdoc 时) llmdoc tree                      # 动态全局地图:根单例 + topics + descriptions
 → llmdoc index --topic <t>                          # topic 内文档元数据
 → llmdoc context --files <要改的文件> / search      # 定位候选
 → llmdoc show <少量文档>                            # 只读确有价值的正文
 ```
 
-每一层都允许停止。没有固定 startup pack;读多少由任务决定。CLI 是强制外部工具,`tree` 就是根入口——不存在"先找 index.md"这一步。
+每一层都允许停止。默认操作守则不是 startup pack；默认不预载正文，读多少仍由任务决定。仓库只有通过 workspace 根 `llmdoc.config.json` 显式声明 `startup.preload` 时，冷 SessionStart 才直接载入指定正文；结尾完成标记存在时可跳过这些文档的 search/show。CLI 是强制外部工具,`tree` 就是根入口——不存在"先找 index.md"这一步。
 
 ### 3.2 Compact continuation
 
@@ -47,6 +47,7 @@ Compact summary 必须保存 `LLMDOC_STATE`:active goal、已读文档路径、�
 ```
 
 仅在状态不足、相关文档已变、进入新 topic、任务改变或证据冲突时做 targeted refresh。
+SessionStart 的 compact 重入只列出配置的 preload 文档 ID，不重新灌入正文；这不能替代 `LLMDOC_STATE`，也不能退化为固定 startup pack。
 
 ### 3.3 任务结束
 

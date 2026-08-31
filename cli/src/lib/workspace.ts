@@ -11,11 +11,12 @@ import { normalizeRepoRelativePath, repoPath, resolveInsideRoot } from "./fs.js"
 import { gitCommitExists, isShallowRepository } from "./git.js";
 import { matchesCodePathPattern } from "./search.js";
 import { validateDocFrontmatter, validateMeta } from "./schema.js";
+import { loadLlmdocConfig } from "./config.js";
 
 export function loadWorkspace(rootDir: string): WorkspaceData {
   const configuredLlmdocDir = path.join(rootDir, "llmdoc");
   if (!fs.existsSync(configuredLlmdocDir) || !fs.statSync(configuredLlmdocDir).isDirectory()) {
-    throw new CliError("仓库内不存在 llmdoc/ 目录。", 2);
+    throw new CliError("The repository does not contain an llmdoc/ directory.", 2);
   }
   resolveInsideRoot(rootDir, "llmdoc");
   const llmdocDir = configuredLlmdocDir;
@@ -43,6 +44,7 @@ export function loadWorkspace(rootDir: string): WorkspaceData {
 
   const metaPath = path.join(llmdocDir, "meta.json");
   const meta = loadMeta(metaPath, preloadIssues);
+  const llmdocConfig = loadLlmdocConfig(rootDir, documentsByLlmdocPath);
 
   return {
     rootDir,
@@ -53,6 +55,7 @@ export function loadWorkspace(rootDir: string): WorkspaceData {
     topics,
     rootSingletons,
     meta,
+    llmdocConfig,
     preloadIssues
   };
 }
@@ -68,7 +71,7 @@ function scanDocuments(rootDir: string, llmdocDir: string, preloadIssues: Valida
           severity: "error",
           code: "file.extension.invalid",
           path: repoRelativePath,
-          message: "llmdoc/ 下仅允许 .mdx 文档与根级唯一 meta.json。"
+          message: "llmdoc/ allows only .mdx documents and one root-level meta.json file."
         });
       }
       return;
@@ -83,7 +86,7 @@ function scanDocuments(rootDir: string, llmdocDir: string, preloadIssues: Valida
         severity: "error",
         code: "frontmatter.parse",
         path: repoRelativePath,
-        message: `front matter 解析失败: ${(error as Error).message}`
+        message: `Front matter parse failed: ${(error as Error).message}`
       });
       return;
     }
@@ -136,7 +139,7 @@ function loadMeta(metaPath: string, preloadIssues: ValidationIssue[]): MetaLedge
       severity: "error",
       code: "meta.parse",
       path: "llmdoc/meta.json",
-      message: `meta.json 解析失败: ${(error as Error).message}`
+      message: `meta.json parse failed: ${(error as Error).message}`
     });
     return null;
   }
@@ -147,7 +150,7 @@ function loadMeta(metaPath: string, preloadIssues: ValidationIssue[]): MetaLedge
         severity: "error",
         code: "meta.invalid",
         path: "llmdoc/meta.json",
-        message: `meta.json 非法: ${error}`
+        message: `Invalid meta.json: ${error}`
       });
     }
     return null;
@@ -157,6 +160,7 @@ function loadMeta(metaPath: string, preloadIssues: ValidationIssue[]): MetaLedge
 
 export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
   const issues: ValidationIssue[] = [...workspace.preloadIssues];
+  issues.push(...workspace.llmdocConfig.issues);
   const seenDocPaths = new Set<string>();
 
   if (!workspace.meta) {
@@ -165,7 +169,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
       code: "meta.missing",
       path: "llmdoc/meta.json",
       message:
-        "缺少 llmdoc/meta.json。请运行 `npx -y @tokenroll/llmdoc init-state` 建立台账（若仓库尚无提交，请先创建首次 Git 提交）。"
+        "llmdoc/meta.json is missing. Run `npx -y @tokenroll/llmdoc init-state` to create the ledger (create the initial Git commit first if the repository has no commits)."
     });
   }
 
@@ -177,7 +181,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
         severity: "error",
         code: "frontmatter.invalid",
         path: document.repoPath,
-        message: `front matter 非法: ${error}`
+        message: `Invalid front matter: ${error}`
       });
     }
 
@@ -199,7 +203,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
         severity: "error",
         code: "hierarchy.nested",
         path: document.repoPath,
-        message: "topic 下不允许继续嵌套子目录。"
+        message: "A topic cannot contain nested subdirectories."
       });
     }
 
@@ -218,7 +222,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
         severity: "warning",
         code: "link.wikilink",
         path: document.repoPath,
-        message: "正文包含 [[wikilink]] 语法;llmdoc 不解析它,请改用标准 Markdown 相对链接。"
+        message: "The body contains [[wikilink]] syntax, which llmdoc does not parse. Use a standard relative Markdown link."
       });
     }
 
@@ -236,7 +240,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
           severity: "error",
           code: "relations.requires.missing",
           path: document.repoPath,
-          message: `requires 指向不存在的文档: ${relationPath}`
+          message: `requires points to a missing document: ${relationPath}`
         });
       }
     }
@@ -255,7 +259,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
           severity: "error",
           code: "relations.related.missing",
           path: document.repoPath,
-          message: `related 指向不存在的文档: ${relationPath}`
+          message: `related points to a missing document: ${relationPath}`
         });
       }
     }
@@ -268,14 +272,14 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
           severity: "error",
           code: "link.invalid-path",
           path: document.repoPath,
-          message: `正文链接非法: ${linkTarget} (${normalizedLink.message})`
+          message: `Invalid body link: ${linkTarget} (${normalizedLink.message})`
         });
       } else if (!workspace.documentsByLlmdocPath.has(normalizedLink.value)) {
         issues.push({
           severity: "error",
           code: "link.missing",
           path: document.repoPath,
-          message: `正文链接悬空: ${linkTarget}`
+          message: `Body link points to a missing document: ${linkTarget}`
         });
       }
     }
@@ -294,7 +298,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
           severity: "error",
           code: "coderef.path.missing",
           path: document.repoPath,
-          message: `CodeRef path 不存在: ${codeRef.path}`
+          message: `CodeRef path does not exist: ${codeRef.path}`
         });
       }
     }
@@ -313,7 +317,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
           severity: "error",
           code: "code.paths.missing",
           path: document.repoPath,
-          message: `code.paths 指向不存在的路径: ${codePath}`
+          message: `code.paths points to a missing path: ${codePath}`
         });
       } else if (
         normalized.isGlob &&
@@ -323,7 +327,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
           severity: "error",
           code: "code.paths.unmatched",
           path: document.repoPath,
-          message: `code.paths glob 未命中任何现有文件: ${codePath}`
+          message: `code.paths glob matches no existing files: ${codePath}`
         });
       }
     }
@@ -333,7 +337,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
         severity: "warning",
         code: "size.line-warning",
         path: document.repoPath,
-        message: `文档 ${document.lineCount} 行，超过建议上限 ${DOC_LINE_WARNING_LIMIT} 行。`
+        message: `The document has ${document.lineCount} lines, exceeding the recommended limit of ${DOC_LINE_WARNING_LIMIT}.`
       });
     }
   }
@@ -344,7 +348,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
         severity: "warning",
         code: "topic.empty",
         path: `llmdoc/${topic}`,
-        message: "topic 目录为空。"
+        message: "The topic directory is empty."
       });
     }
   }
@@ -354,13 +358,13 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
     // 否则任何 fetch-depth:1 的 CI 都会误报陈旧。
     const shallow = isShallowRepository(workspace.rootDir);
     const revisionSeverity = shallow ? ("warning" as const) : ("error" as const);
-    const shallowHint = shallow ? "(shallow clone;完整校验请用 fetch-depth: 0 或 git fetch --unshallow)" : "";
+    const shallowHint = shallow ? " (shallow clone; use fetch-depth: 0 or git fetch --unshallow for complete validation)" : "";
     if (!gitCommitExists(workspace.rootDir, workspace.meta.baseline.revision)) {
       issues.push({
         severity: revisionSeverity,
         code: "meta.baseline.revision.missing",
         path: "llmdoc/meta.json",
-        message: `baseline.revision 不存在于当前 git 历史: ${workspace.meta.baseline.revision}${shallowHint}`
+        message: `baseline.revision does not exist in current Git history: ${workspace.meta.baseline.revision}${shallowHint}`
       });
     }
     const metaPaths = Object.keys(workspace.meta.documents).sort();
@@ -372,7 +376,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
           severity: "error",
           code: "meta.entry.missing",
           path: `llmdoc/${docPath}`,
-          message: "meta.json 缺少对应 documents entry。可用 `llmdoc adopt <path>` 无损登记。"
+          message: "meta.json is missing the corresponding documents entry. Use `llmdoc adopt <path>` to register it without rewriting the document."
         });
       }
     }
@@ -383,7 +387,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
           severity: "error",
           code: "meta.entry.orphaned",
           path: `llmdoc/${metaPath}`,
-          message: "meta.json 中存在孤儿 documents entry。"
+          message: "meta.json contains an orphan documents entry."
         });
       }
       const revision = workspace.meta.documents[metaPath]?.validatedRevision;
@@ -392,7 +396,7 @@ export function validateWorkspace(workspace: WorkspaceData): ValidationIssue[] {
           severity: revisionSeverity,
           code: "meta.document.revision.missing",
           path: `llmdoc/${metaPath}`,
-          message: `validatedRevision 不存在于当前 git 历史: ${revision}${shallowHint}`
+          message: `validatedRevision does not exist in current Git history: ${revision}${shallowHint}`
         });
       }
     }
@@ -409,13 +413,13 @@ function validateMdxBody(body: string): string[] {
   const cleanBody = stripMarkdownLiterals(body);
   const issues: string[] = [];
   if (/^\s*import\s+/m.test(cleanBody) || /^\s*export\s+/m.test(cleanBody)) {
-    issues.push("仅允许纯 Markdown 与自闭合 CodeRef，禁止 import/export。");
+    issues.push("Only plain Markdown and self-closing CodeRef tags are allowed; import/export is forbidden.");
   }
   if (/<(?!CodeRef\b)[A-Za-z][^>]*>/m.test(cleanBody) || /<\/[A-Za-z][^>]*>/m.test(cleanBody)) {
-    issues.push("仅允许自闭合 <CodeRef ... /> 组件，禁止任意 JSX 标签。");
+    issues.push("Only self-closing <CodeRef ... /> components are allowed; arbitrary JSX tags are forbidden.");
   }
   if (/\{[^}\n]+\}/m.test(cleanBody)) {
-    issues.push("禁止在正文中使用 MDX/JS 表达式。");
+    issues.push("MDX/JS expressions are forbidden in document bodies.");
   }
   issues.push(...validateCodeRefTags(body));
   return [...new Set(issues)];
@@ -425,10 +429,10 @@ function validateLlmdocRelativePath(input: string): { ok: true; value: string } 
   try {
     const normalized = normalizeRepoRelativePath(input);
     if (!normalized.endsWith(".mdx")) {
-      return { ok: false, message: `路径必须指向 .mdx 文档: ${input}` };
+      return { ok: false, message: `Path must point to an .mdx document: ${input}` };
     }
     if (normalized.startsWith("llmdoc/")) {
-      return { ok: false, message: `路径必须是 llmdoc/ 下相对路径而非仓库根路径: ${input}` };
+      return { ok: false, message: `Path must be relative to llmdoc/, not the repository root: ${input}` };
     }
     return { ok: true, value: normalized };
   } catch (error) {

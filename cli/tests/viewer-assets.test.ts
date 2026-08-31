@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { performance } from "node:perf_hooks";
 
 import { describe, expect, test } from "vitest";
@@ -23,6 +25,13 @@ function documentNode(path: string, topic: string | null, status = "fresh") {
 }
 
 describe("viewer browser models", () => {
+  test("published viewer interface strings are English", () => {
+    for (const fileName of ["viewer.html", "viewer-app.js", "viewer-detail.js", "viewer-graph.js"]) {
+      const content = fs.readFileSync(path.resolve(__dirname, "..", "assets", fileName), "utf8");
+      expect(content).not.toMatch(/[\p{Script=Han}]/u);
+    }
+  });
+
   test("topic graph deterministically aggregates cross-topic relations", () => {
     const state = {
       nodes: [

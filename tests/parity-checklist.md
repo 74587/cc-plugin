@@ -9,8 +9,8 @@ Claude Code 根插件是唯一手工维护的准源。Codex 表面由 ACPlugin �
 - [ ] `init/update/prune/upgrade` 的宿主专属 front matter / UI policy 保持正确；五个 skill 和三个 agent 的正文一致性已由脚本机械校验。
 - [ ] `upgrade` 在两个平台都保持仅显式调用（Claude 侧 `disable-model-invocation: true`；Codex 侧 `policy.allow_implicit_invocation: false`），未被 operating skill 或 hook 隐式触发。
 - [ ] Claude 的 `SessionStart`、`Stop`、`PreCompact` 都通过 npm alias `@tokenroll/llmdoc-hook-runtime@npm:@tokenroll/llmdoc` 调用 scoped CLI，避免消费仓库的同名本地依赖遮蔽 runtime；Codex 保留仓库根 `hooks/hooks.json`，并按官方信任模型启用。
-- [ ] hooks fail-open、永不写 `llmdoc/`；SessionStart 不超过 200 token，Stop/PreCompact 成功时输出合法 JSON；pending 反思候选能在无代码 delta 时触发 update 提醒。
-- [ ] 生成目录中没有 V2 `worker`、tracked reflection/memory 树、startup pack、watermark 或旧命令残留；恢复后的 Reflector 不保存 transcript。
+- [ ] hooks fail-open、永不写 `llmdoc/`；SessionStart 默认注入英文 operating guidance、允许 config 关闭或冷启动预载正文、且不设置 llmdoc 字符/token 预算；完成标记可检测宿主截断，preload 字段错误不重置合法 reminder；Stop/PreCompact 成功时输出合法英文 JSON message。
+- [ ] 生成目录中没有 V2 `worker`、tracked reflection/memory 树、隐式 startup pack、watermark 或旧命令残留；compact 重入只列配置的 preload ID、不重新注入正文，恢复后的 Reflector 不保存 transcript。
 - [ ] `.agents/skills/upgrade/agents/openai.yaml` 设置 `policy.allow_implicit_invocation: false`，确保 upgrade 只能显式调用。
 - [ ] 按本清单完成抽验，Codex plugin scanner 与完整 CI 均通过。
 

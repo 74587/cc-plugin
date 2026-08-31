@@ -143,6 +143,50 @@ Use `npx -y @tokenroll/llmdoc --help` or
 reference. `status` and `delta` assess validity and impact; they are not
 retrieval steps.
 
+### Startup context configuration
+
+Repositories that use the lifecycle hooks can add an optional
+`llmdoc.config.json` at the llmdoc workspace root. In a Git repository, this is
+the nearest Git root that owns `llmdoc/`:
+
+```json
+{
+  "$schema": "https://llmdoc.tokenroll.ai/schemas/config.schema.json",
+  "schema": "llmdoc.config/v1",
+  "startup": {
+    "remindSkill": true,
+    "preload": [
+      "architecture.mdx",
+      "plugin-packaging/claude-and-codex.mdx"
+    ]
+  }
+}
+```
+
+- `remindSkill` controls the SessionStart operating guidance: load the llmdoc
+  skill, use the CLI retrieval gate, and delegate to the llmdoc roles. It
+  defaults to `true`; set it to `false` to opt out.
+- `preload` lists exact document IDs, with an optional `llmdoc/` prefix. Cold
+  SessionStart inserts their bodies directly in the listed order with no llmdoc
+  character or token budget. A final completion marker confirms that the host
+  supplied the full preload; without it, retrieve only the missing body with
+  `show`.
+- Compact re-entry lists configured document IDs but does not inject their full
+  bodies again. Continue from `LLMDOC_STATE` and retrieve a body only if needed.
+- `validate` reports malformed config, missing paths, and path escapes.
+  Normalized aliases of the same document are deduplicated with a warning.
+  Lifecycle hooks stay fail-open: unreadable schema/JSON uses the default
+  reminder, while a valid `remindSkill` choice survives preload-only errors.
+- `mv` rewrites matching preload paths transactionally. `prune --report` lists
+  preload references that must be updated before a manual merge or deletion.
+
+Without this file, SessionStart emits its state plus the default operating
+guidance and does not preload documents.
+
+All fixed CLI interface text is English, including help, diagnostics, hook
+messages, and the local Viewer. Chinese queries and repository document content
+remain fully supported and are returned unchanged.
+
 ## Knowledge and safety boundaries
 
 - Stable knowledge belongs in tracked `llmdoc/`; investigations, caches, and
@@ -161,8 +205,10 @@ retrieval steps.
 - Every workflow authorizes knowledge maintenance only, not source-code edits.
   Structural writes are validated and confined to the repository's `llmdoc/`
   boundary.
-- Hooks emit read-only, fail-open signals through the scoped CLI. Review hooks
-  and trust the plugin source before enabling them.
+- Hooks emit read-only, fail-open signals through the scoped CLI. SessionStart
+  also injects the configurable operating guidance, so projects do not need to
+  repeat it in CLAUDE.md/AGENTS.md. Review hooks and trust the plugin source
+  before enabling them.
 - A `delta` match means “review this claim,” not “rewrite this document.”
   Preserve decisions, rationale, boundaries, invariants, contracts, and
   non-obvious failure semantics; leave reconstructable facts in source, schemas,

@@ -42,7 +42,7 @@ export function assertOutputSchema(name: OutputSchemaName, payload: unknown): vo
   if (ok) {
     return;
   }
-  throw new CliError(`内部输出契约错误(${name}): ${formatErrors(validator.errors ?? [])}`, 70);
+  throw new CliError(`Internal output contract error (${name}): ${formatErrors(validator.errors ?? [])}`, 70);
 }
 
 export function stringifyValidatedOutput(name: OutputSchemaName, payload: unknown): string {
@@ -55,7 +55,7 @@ export function parseAndValidateJsonString(name: OutputSchemaName, input: string
   try {
     payload = JSON.parse(input);
   } catch (error) {
-    throw new CliError(`内部输出契约错误(${name}): JSON 解析失败: ${(error as Error).message}`, 70);
+    throw new CliError(`Internal output contract error (${name}): JSON parse failed: ${(error as Error).message}`, 70);
   }
   return stringifyValidatedOutput(name, payload);
 }
@@ -67,7 +67,7 @@ function getValidator(name: OutputSchemaName): ValidateFunction {
   }
   const defs = (schemaDocument as { $defs?: Record<string, unknown> }).$defs;
   if (!defs?.[name]) {
-    throw new CliError(`内部输出契约错误: 未找到 schema ${name}`, 70);
+    throw new CliError(`Internal output contract error: schema ${name} was not found`, 70);
   }
   const validator = ajv.compile({
     $schema: "https://json-schema.org/draft/2020-12/schema",

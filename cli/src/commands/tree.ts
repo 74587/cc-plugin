@@ -84,7 +84,7 @@ export function runTree(options: TreeOptions): unknown {
     lines.push(`    ${entry.topic.summary}`);
   }
   lines.push("", ...formatPaginationSummary(result));
-  lines.push("hint: `npx @tokenroll/llmdoc tree --docs` 展开文档级；`... index --topic <t>` 看文档元数据");
+  lines.push("hint: use `npx @tokenroll/llmdoc tree --docs` to expand documents; use `... index --topic <t>` for metadata");
   return lines.join("\n");
 }
 

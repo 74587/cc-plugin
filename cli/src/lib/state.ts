@@ -4,6 +4,7 @@ import { DocumentImpact, GitState, MetaLedger, ParsedDocument, WorkspaceData } f
 import { canAdvanceRevisions, gitCommitExists, readChangedPathsSince, readGitState } from "./git.js";
 import { normalizeRepoRelativePath } from "./fs.js";
 import { matchesCodePathPattern } from "./search.js";
+import { LLMDOC_CONFIG_FILENAME } from "./config.js";
 
 export interface ScopeFilter {
   topics: Set<string>;
@@ -63,8 +64,8 @@ export function analyzeDelta(workspace: WorkspaceData, scope?: ScopeFilter): Del
         invalidRevisionDocuments.push(document);
         invalidRevisionReasons.push(
           !validatedRevision
-            ? `文档 ${document.llmdocPath} 缺少 validatedRevision`
-            : `文档 ${document.llmdocPath} 的 validatedRevision 不存在于当前 git 历史: ${validatedRevision}`
+            ? `Document ${document.llmdocPath} has no validatedRevision`
+            : `Document ${document.llmdocPath} has a validatedRevision that does not exist in current Git history: ${validatedRevision}`
         );
       }
       const changedCommittedPaths =
@@ -119,30 +120,24 @@ export function analyzeDelta(workspace: WorkspaceData, scope?: ScopeFilter): Del
 
   const reasons: string[] = [];
   if (!git.available || git.degradedReason) {
-    reasons.push(git.degradedReason ?? "git 状态不可用");
+    reasons.push(git.degradedReason ?? "Git state is unavailable");
   }
   if (invalidRevisionReasons.length > 0) {
     reasons.push(...invalidRevisionReasons);
   }
   if (unmappedCommittedPaths.length > 0 || unmappedDirtyPaths.length > 0) {
-    reasons.push("存在未映射代码路径");
+    reasons.push("Unmapped code paths exist");
   }
   if (needsReview.length > 0) {
-    reasons.push("存在 requires 反向一跳需复核文档");
+    reasons.push("Documents in the reverse requires closure need review");
   }
   if (directImpacts.length > 8) {
-    reasons.push("受影响文档过多，建议 deep");
+    reasons.push("Too many documents are impacted; deep mode is recommended");
   }
   if (dirtyDocuments.length > 0) {
-    reasons.push("存在未提交 dirty 关联代码");
+    reasons.push("Mapped implementation code has uncommitted changes");
   }
-  const suggestedMode: "light" | "deep" = reasons.some((reason) =>
-    ["未映射", "需复核", "过多", "dirty", "不可用", "不存在于当前 git 历史", "validatedRevision", "缺少"].some((keyword) =>
-      reason.includes(keyword)
-    )
-  )
-    ? "deep"
-    : "light";
+  const suggestedMode: "light" | "deep" = reasons.length > 0 ? "deep" : "light";
 
   return {
     git,
@@ -179,7 +174,7 @@ export function parseScope(values: string[] | undefined, workspace: WorkspaceDat
       continue;
     }
     if (!workspace.documentsByLlmdocPath.has(normalized)) {
-      throw new Error(`scope 未命中任何 topic 或文档: ${raw}`);
+      throw new Error(`Scope did not match any topic or document: ${raw}`);
     }
     documentPaths.add(normalized);
   }
@@ -214,7 +209,7 @@ export function assertRevisionAdvancePreconditions(input: {
 }): { git: GitState; targetPaths: string[] } {
   const { workspace, llmdocPaths, updateAll } = input;
   if (!workspace.meta) {
-    throw new Error("缺少 meta.json");
+    throw new Error("meta.json is missing");
   }
   const git = readWorkspaceGitState(workspace);
   const advance = canAdvanceRevisions(git);
@@ -236,8 +231,8 @@ export function assertRevisionAdvancePreconditions(input: {
   if (blocked.length > 0) {
     throw new Error(
       updateAll
-        ? `全量 fingerprint 时以下文档关联代码存在 dirty 变更，不能伪造 revision: ${blocked.join(", ")}`
-        : `以下文档关联代码存在 dirty 变更，不能伪造 revision: ${blocked.join(", ")}`
+        ? `A full fingerprint cannot advance while mapped code for these documents is dirty: ${blocked.join(", ")}`
+        : `Cannot advance revisions while mapped code for these documents is dirty: ${blocked.join(", ")}`
     );
   }
   return { git, targetPaths };
@@ -336,7 +331,11 @@ export function loadIgnorePatterns(rootDir: string): string[] {
 }
 
 export function isImplementationSurfacePath(repoRelativePath: string, ignorePatterns: string[] = []): boolean {
-  if (repoRelativePath.startsWith("llmdoc/") || repoRelativePath.startsWith(".llmdoc-tmp/")) {
+  if (
+    repoRelativePath === LLMDOC_CONFIG_FILENAME ||
+    repoRelativePath.startsWith("llmdoc/") ||
+    repoRelativePath.startsWith(".llmdoc-tmp/")
+  ) {
     return false;
   }
   const basename = repoRelativePath.split("/").pop() ?? repoRelativePath;

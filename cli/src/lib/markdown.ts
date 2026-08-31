@@ -77,27 +77,27 @@ export function validateCodeRefTags(body: string): string[] {
     const raw = match[0] ?? "";
     const attributes = match[1] ?? "";
     if (!raw.endsWith("/>")) {
-      issues.push("CodeRef 必须使用自闭合写法 <CodeRef ... />。");
+      issues.push("CodeRef must use the self-closing form <CodeRef ... />.");
       continue;
     }
     const attrMatches = [...attributes.matchAll(/([A-Za-z]+)="([^"]*)"/g)];
     const consumed = attrMatches.map((attr) => attr[0]).join(" ").trim();
     const normalized = attributes.replace(/\s+/g, " ").trim().replace(/\/$/, "").trim();
     if (normalized && consumed !== normalized) {
-      issues.push("CodeRef 仅允许双引号属性 path 和可选 symbol。");
+      issues.push("CodeRef allows only the double-quoted path attribute and optional symbol attribute.");
       continue;
     }
     const names = attrMatches.map((attr) => attr[1]!);
     const duplicates = names.filter((name, index) => names.indexOf(name) !== index);
     if (duplicates.length > 0) {
-      issues.push(`CodeRef 存在重复属性: ${[...new Set(duplicates)].join(", ")}`);
+      issues.push(`CodeRef contains duplicate attributes: ${[...new Set(duplicates)].join(", ")}`);
     }
     if (!names.includes("path")) {
-      issues.push("CodeRef 缺少必填属性 path。");
+      issues.push("CodeRef is missing the required path attribute.");
     }
     for (const name of names) {
       if (name !== "path" && name !== "symbol") {
-        issues.push(`CodeRef 存在未知属性: ${name}`);
+        issues.push(`CodeRef contains an unknown attribute: ${name}`);
       }
     }
   }

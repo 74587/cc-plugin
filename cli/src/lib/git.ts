@@ -12,7 +12,7 @@ function runGit(rootDir: string, args: string[]): string {
   });
 
   if (result.status !== 0) {
-    throw new CliError((result.stderr || result.stdout || "git 命令失败").trim());
+    throw new CliError((result.stderr || result.stdout || "Git command failed").trim());
   }
 
   return result.stdout.trim();
@@ -59,7 +59,7 @@ export function readGitState(rootDir: string, baselineRevision: string | null): 
       stagedPaths: [],
       unstagedPaths: [],
       untrackedPaths: [],
-      degradedReason: "当前目录不是 git 仓库，状态面降级为不可用。"
+      degradedReason: "The current directory is not a Git repository; state diagnostics are unavailable."
     };
   }
 
@@ -80,9 +80,9 @@ export function readGitState(rootDir: string, baselineRevision: string | null): 
 
   let degradedReason: string | null = null;
   if (!headRevision) {
-    degradedReason = isUnbornHead(rootDir) ? "HEAD 尚无 commit（当前分支尚未创建首次提交）。" : "无法解析 HEAD commit。";
+    degradedReason = isUnbornHead(rootDir) ? "HEAD has no commit (the current branch is unborn)." : "Unable to resolve the HEAD commit.";
   } else if (baselineRevision && !gitCommitExists(rootDir, baselineRevision)) {
-    degradedReason = `baseline.revision 不存在于当前 git 历史: ${baselineRevision}`;
+    degradedReason = `baseline.revision does not exist in current Git history: ${baselineRevision}`;
   }
 
   return {
@@ -137,10 +137,10 @@ export function readCommitsWithChangedPathsSince(
 
 export function canAdvanceRevisions(gitState: GitState): { ok: true } | { ok: false; reason: string } {
   if (!gitState.available || !gitState.headRevision) {
-    return { ok: false, reason: gitState.degradedReason ?? "git 状态不可用。" };
+    return { ok: false, reason: gitState.degradedReason ?? "Git state is unavailable." };
   }
   if (gitState.inProgressOperation) {
-    return { ok: false, reason: `${gitState.inProgressOperation} 进行中，不推进 revision。` };
+    return { ok: false, reason: `${gitState.inProgressOperation} is in progress; revisions cannot advance.` };
   }
   return { ok: true };
 }

@@ -145,6 +145,12 @@ function makeWorkspace(documents: ParsedDocument[]): WorkspaceData {
         totalEstimatedTokens: 40
       }
     },
+    llmdocConfig: {
+      exists: false,
+      config: null,
+      preloadPaths: [],
+      issues: []
+    },
     preloadIssues: []
   };
 }

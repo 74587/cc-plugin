@@ -61,7 +61,7 @@ export function createViewerRequestHandler(rootDir: string): ViewerRequestHandle
         // 仅按扫描产生的 canonical llmdocPath 查表，不接受任意文件系统路径。
         const document = workspace.documentsByLlmdocPath.get(docPath);
         if (!document) {
-          sendJson(response, 404, { error: `未找到文档: ${docPath}` }, headOnly);
+          sendJson(response, 404, { error: `Document not found: ${docPath}` }, headOnly);
           return;
         }
         sendJson(
@@ -97,7 +97,7 @@ function sendStaticAsset(
   // fileName 只可能来自上方常量白名单；请求值不会参与路径解析。
   const assetPath = path.join(assetsRoot, asset.fileName);
   if (!fs.existsSync(assetPath)) {
-    throw new CliError(`viewer 资产缺失: ${asset.fileName}`);
+    throw new CliError(`Viewer asset is missing: ${asset.fileName}`);
   }
   sendBody(response, 200, fs.readFileSync(assetPath), asset.contentType, headOnly);
 }
