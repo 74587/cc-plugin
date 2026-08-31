@@ -15,7 +15,7 @@ import DocsLayout from "../../../../layouts/DocsLayout.astro";
   <dl class="commands">
     <div><dt><code>tree</code></dt><dd>根文档与 topic 的动态地图。</dd></div>
     <div><dt><code>index [--topic …] [--kind …]</code></dt><dd>用于发现文档的 front matter 投影。</dd></div>
-    <div><dt><code>search &lt;query&gt;</code></dt><dd>在跟踪知识中执行词法搜索。</dd></div>
+    <div><dt><code>search &lt;query&gt;</code></dt><dd>在跟踪知识中执行词法搜索；中文查询自动分词，零 lexical 召回时明确标注 CJK bigram 降级。</dd></div>
     <div><dt><code>context --files &lt;src…&gt;</code></dt><dd>逐个把源码路径映射到 owner 文档与依赖前置，并明确报告未映射输入。</dd></div>
     <div><dt><code>show &lt;path…&gt;</code></dt><dd>读取选中的文档正文。</dd></div>
     <div><dt><code>serve</code></dt><dd>在 <code>127.0.0.1</code> 启动本地 Viewer，查看文档结构、关系与状态。</dd></div>
@@ -30,9 +30,10 @@ import DocsLayout from "../../../../layouts/DocsLayout.astro";
 
   <h2>安全改写</h2>
   <dl class="commands">
-    <div><dt><code>new &lt;path&gt; --kind &lt;kind&gt;</code></dt><dd>创建 V3 文档骨架。</dd></div>
+    <div><dt><code>new &lt;path&gt; --kind &lt;kind&gt;</code></dt><dd>创建 V3 文档骨架；最近 Git 根尚无 <code>llmdoc/</code> 时会自动建立目录。</dd></div>
     <div><dt><code>adopt &lt;path…&gt;</code></dt><dd>登记已有合法文档，不重写正文。</dd></div>
     <div><dt><code>mv &lt;from&gt; &lt;to&gt;</code></dt><dd>事务式移动文档并重写内部引用。</dd></div>
+    <div><dt><code>init-state</code></dt><dd>在真实 Git HEAD 上建立首次 ledger；unborn 仓库须先创建初始 commit。</dd></div>
     <div><dt><code>commit [--verified &lt;path…&gt; | --all]</code></dt><dd>校验、提交正文，并刷新变化或验证未变文档的 revision。</dd></div>
     <div><dt><code>fingerprint --update &lt;path…&gt; | --all</code></dt><dd>刷新 ledger 中经过验证的 revision。</dd></div>
   </dl>

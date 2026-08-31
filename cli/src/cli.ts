@@ -113,7 +113,7 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
 
   program
     .command("search")
-    .description("按词法检索 llmdoc 文档(front matter、标题与正文,返回 snippet)")
+    .description("按词法检索 llmdoc 文档(自动中文分词，必要时使用 CJK bigram 降级)")
     .argument("<query>", "检索词")
     .option("--topic <topic>", "限定 topic")
     .option("--kind <kind>", "限定类型: architecture | guide | reference")
@@ -192,6 +192,10 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
   program
     .command("init-state")
     .description("首次生成 llmdoc/meta.json 台账骨架(validatedRevision 全部为 null)")
+    .addHelpText(
+      "after",
+      "\n前置: Git HEAD 必须已有真实 commit。生成后先 validate，再用 commit --all 完成 bootstrap。"
+    )
     .action(async () => {
       const { runInitState } = await import("./commands/init-state.js");
       const rootDir = findProjectRoot(cwd);
@@ -230,14 +234,17 @@ export async function runCli(argv: string[], cwd = process.cwd(), stdin = ""): P
     .argument("<path>", "目标相对路径,如 api-client/retry-policy.mdx")
     .requiredOption("--kind <kind>", "文档类型: architecture | guide | reference")
     .option("--description <description>", "front matter 一句话描述")
+    .addHelpText(
+      "after",
+      "\n首次创建时会自动建立 llmdoc/；完成初始文档后运行 init-state → validate → commit --all。"
+    )
     .action((targetPath, commandOptions) => {
-      const rootDir = findProjectRoot(cwd);
       output.push(
         writeOutput(
           "new",
           runNew({
             ...globalOptions,
-            cwd: rootDir,
+            cwd,
             path: targetPath,
             kind: commandOptions.kind,
             description: commandOptions.description

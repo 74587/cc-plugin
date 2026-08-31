@@ -9,10 +9,11 @@ interface SearchCacheEntry {
   llmdocPath: string;
   mtimeMs: number;
   searchableText: string;
+  wordCount: number;
 }
 
 interface SearchCacheFile {
-  version: 1;
+  version: 2;
   entries: Record<string, SearchCacheEntry>;
 }
 
@@ -22,12 +23,52 @@ export interface SearchResult {
   snippet: string;
 }
 
+export type SearchMode = "lexical" | "cjk-bigram-fallback";
+
+export interface SearchResponse {
+  results: SearchResult[];
+  mode: SearchMode;
+}
+
+interface SearchToken {
+  value: string;
+  weight: number;
+}
+
+const WORD_SEGMENTER = new Intl.Segmenter("zh-CN", { granularity: "word" });
+const CJK_CHARACTER = /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]$/u;
+const CJK_RUN = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]{2,}/gu;
+const QUERY_STOP_WORDS = new Set([
+  "的",
+  "了",
+  "呢",
+  "吗",
+  "啊",
+  "吧",
+  "是",
+  "在",
+  "与",
+  "和",
+  "或",
+  "及",
+  "把",
+  "被",
+  "从",
+  "到",
+  "为",
+  "怎么",
+  "如何",
+  "什么",
+  "为何"
+]);
+
 export function searchDocuments(
   workspace: WorkspaceData,
   query: string,
   filters?: { topic?: string; kind?: string }
-): SearchResult[] {
-  const tokens = tokenize(query);
+): SearchResponse {
+  const normalizedQuery = query.trim().toLowerCase();
+  const lexicalTokens = tokenizeQuery(query).map((value) => ({ value, weight: 1 }));
   const cache = loadSearchCache(workspace);
   const filteredDocs = workspace.documents.filter((document) => {
     if (filters?.topic && document.topic !== filters.topic) {
@@ -39,41 +80,95 @@ export function searchDocuments(
     return true;
   });
 
+  const lexicalResults = scoreDocuments(filteredDocs, cache, lexicalTokens, {
+    minimumMatchedTokens: 1,
+    normalizedQuery
+  });
+  if (lexicalResults.length > 0) {
+    return {
+      results: lexicalResults,
+      mode: "lexical"
+    };
+  }
+
+  const bigrams = cjkBigrams(query);
+  if (bigrams.length === 0) {
+    return {
+      results: [],
+      mode: "lexical"
+    };
+  }
+  const minimumMatchedTokens = bigrams.length >= 4 ? Math.max(2, Math.ceil(bigrams.length * 0.25)) : 1;
+  return {
+    results: scoreDocuments(
+      filteredDocs,
+      cache,
+      bigrams.map((value) => ({ value, weight: 0.55 })),
+      { minimumMatchedTokens, normalizedQuery }
+    ),
+    mode: "cjk-bigram-fallback"
+  };
+}
+
+function scoreDocuments(
+  documents: ParsedDocument[],
+  cache: SearchCacheFile,
+  tokens: SearchToken[],
+  options: { minimumMatchedTokens: number; normalizedQuery: string }
+): SearchResult[] {
+  if (tokens.length === 0) {
+    return [];
+  }
+
   const documentFrequency = new Map<string, number>();
   for (const token of tokens) {
     let count = 0;
-    for (const document of filteredDocs) {
+    for (const document of documents) {
       const searchableText = cache.entries[document.llmdocPath]?.searchableText ?? buildSearchableText(document);
-      if (searchableText.includes(token)) {
+      if (searchableText.includes(token.value)) {
         count += 1;
       }
     }
-    documentFrequency.set(token, count);
+    documentFrequency.set(token.value, count);
   }
 
-  return filteredDocs
+  return documents
     .map((document) => {
       const searchableText = cache.entries[document.llmdocPath]?.searchableText ?? buildSearchableText(document);
-      const wordCount = tokenize(searchableText).length || 1;
+      const wordCount = cache.entries[document.llmdocPath]?.wordCount ?? countWords(searchableText);
       let score = 0;
+      let matchedTokenCount = 0;
 
       for (const token of tokens) {
-        const frequency = countSubstring(searchableText, token);
+        const frequency = countSubstring(searchableText, token.value);
         if (frequency === 0) {
           continue;
         }
-        const df = documentFrequency.get(token) ?? 0;
-        const idf = Math.log(1 + (filteredDocs.length - df + 0.5) / (df + 0.5));
-        score += idf * ((frequency * 2.2) / (frequency + 1.2 * (1 - 0.75 + 0.75 * (wordCount / 200))));
+        matchedTokenCount += 1;
+        const df = documentFrequency.get(token.value) ?? 0;
+        const idf = Math.log(1 + (documents.length - df + 0.5) / (df + 0.5));
+        score +=
+          token.weight *
+          idf *
+          ((frequency * 2.2) / (frequency + 1.2 * (1 - 0.75 + 0.75 * (wordCount / 200))));
+      }
+
+      if (options.normalizedQuery.length > 1) {
+        const phraseFrequency = countSubstring(searchableText, options.normalizedQuery);
+        score += phraseFrequency * (tokens.length + 1) * 2;
       }
 
       return {
         document,
         score,
-        snippet: buildSnippet(document.body, tokens)
+        matchedTokenCount,
+        snippet: buildSnippet(
+          document.body,
+          tokens.map((token) => token.value)
+        )
       };
     })
-    .filter((entry) => entry.score > 0)
+    .filter((entry) => entry.score > 0 && entry.matchedTokenCount >= options.minimumMatchedTokens)
     .sort((left, right) => right.score - left.score || left.document.llmdocPath.localeCompare(right.document.llmdocPath));
 }
 
@@ -98,7 +193,7 @@ function normalizeCodePathPattern(pattern: string): string {
 
 function loadSearchCache(workspace: WorkspaceData): SearchCacheFile {
   const next: SearchCacheFile = {
-    version: 1,
+    version: 2,
     entries: {}
   };
   const cachePath = resolveCachePath(workspace);
@@ -107,14 +202,16 @@ function loadSearchCache(workspace: WorkspaceData): SearchCacheFile {
   for (const document of workspace.documents) {
     const stats = fs.statSync(document.absolutePath);
     const cachedEntry = existing?.entries[document.llmdocPath];
-    if (cachedEntry && cachedEntry.mtimeMs === stats.mtimeMs) {
+    if (existing?.version === 2 && cachedEntry && cachedEntry.mtimeMs === stats.mtimeMs) {
       next.entries[document.llmdocPath] = cachedEntry;
       continue;
     }
+    const searchableText = buildSearchableText(document);
     next.entries[document.llmdocPath] = {
       llmdocPath: document.llmdocPath,
       mtimeMs: stats.mtimeMs,
-      searchableText: buildSearchableText(document)
+      searchableText,
+      wordCount: countWords(searchableText)
     };
   }
 
@@ -158,12 +255,60 @@ function buildSearchableText(document: ParsedDocument): string {
     .toLowerCase();
 }
 
-function tokenize(input: string): string[] {
-  return input
-    .toLowerCase()
-    .split(/[^a-z0-9\u4e00-\u9fff_-]+/)
-    .map((token) => token.trim())
-    .filter(Boolean);
+function tokenizeQuery(input: string): string[] {
+  const tokens: string[] = [];
+  let singleCjkBuffer: string[] = [];
+  const flushSingleCjkBuffer = (): void => {
+    if (singleCjkBuffer.length > 0) {
+      tokens.push(singleCjkBuffer.join(""));
+      singleCjkBuffer = [];
+    }
+  };
+
+  for (const part of WORD_SEGMENTER.segment(input.toLowerCase())) {
+    const value = part.segment.trim();
+    if (!part.isWordLike || !value) {
+      flushSingleCjkBuffer();
+      continue;
+    }
+    if (QUERY_STOP_WORDS.has(value)) {
+      flushSingleCjkBuffer();
+      continue;
+    }
+    if (CJK_CHARACTER.test(value)) {
+      singleCjkBuffer.push(value);
+      continue;
+    }
+    flushSingleCjkBuffer();
+    tokens.push(value);
+  }
+  flushSingleCjkBuffer();
+  return unique(tokens);
+}
+
+function cjkBigrams(input: string): string[] {
+  const bigrams: string[] = [];
+  for (const match of input.toLowerCase().matchAll(CJK_RUN)) {
+    const characters = [...match[0]];
+    for (let index = 0; index < characters.length - 1; index += 1) {
+      bigrams.push(`${characters[index]}${characters[index + 1]}`);
+    }
+  }
+  return unique(bigrams);
+}
+
+function countWords(input: string): number {
+  let count = 0;
+  for (const part of WORD_SEGMENTER.segment(input)) {
+    if (part.isWordLike && part.segment.trim()) {
+      count += 1;
+    }
+  }
+  return count || 1;
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values)];
 }
 
 function buildSnippet(body: string, tokens: string[]): string {

@@ -21,7 +21,7 @@ import DocsLayout from "../../../../layouts/DocsLayout.astro";
 
   <h2>初始化</h2>
   <p>只有仓库不存在有效 V3 知识面时，才使用 <strong>init</strong>。它设计 domain 与 topic 边界、写入最小充分的 owner 文档，并把每个 first-class 子系统归类为“已文档化”“有意由源码重建”或阻塞缺口。</p>
-  <p>结构校验通过后，init 还要验证自然语言概念查询、每个 implementation boundary 的代表文件、wildcard 负例与必读关系闭包，才能以 Git 状态收尾。</p>
+  <p>首批文档完成后，unborn 仓库先创建真实 HEAD commit；随后由 <code>init-state</code> 建立 ledger、<code>validate</code> 校验结构、Context Floor 探针验证路由，最后用 <code>commit --all</code> 完成 Git 收尾。</p>
 
   <h2>更新</h2>
   <p><strong>update</strong> 对照代码 delta 与已授权的 reflection candidate，语义复核现有知识。仍然正确的文档会被标记为 verified unchanged，不会累积变更日志。</p>

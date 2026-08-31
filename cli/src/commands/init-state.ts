@@ -2,6 +2,7 @@ import fs from "node:fs";
 
 import { CliError } from "../lib/errors.js";
 import { findProjectRoot } from "../lib/fs.js";
+import { isUnbornHead } from "../lib/git.js";
 import { readWorkspaceGitState } from "../lib/state.js";
 import { loadWorkspace } from "../lib/workspace.js";
 import { MetaLedger } from "../types.js";
@@ -21,8 +22,16 @@ export function runInitState(options: InitStateOptions): unknown {
     throw new CliError("llmdoc/meta.json 已存在;init-state 只用于首次建立台账,不覆盖现有状态。");
   }
   const git = readWorkspaceGitState(workspace);
-  if (!git.available || !git.headRevision) {
-    throw new CliError(git.degradedReason ?? "无法解析 HEAD commit,init-state 需要 git 仓库。");
+  if (!git.available) {
+    throw new CliError("init-state 需要 Git 仓库；请先运行 `git init` 并创建一次真实的初始提交。");
+  }
+  if (!git.headRevision) {
+    if (isUnbornHead(rootDir)) {
+      throw new CliError(
+        "HEAD 尚无 commit（当前分支尚未创建首次提交）。请先创建一次真实的初始提交；空仓库可运行 `git commit --allow-empty -m \"chore: initial commit\"`。"
+      );
+    }
+    throw new CliError(`${git.degradedReason ?? "无法解析 HEAD commit。"}请先修复 Git HEAD，再运行 init-state。`);
   }
 
   const now = new Date().toISOString().replace(/\.\d+Z$/, "Z");
@@ -47,8 +56,9 @@ export function runInitState(options: InitStateOptions): unknown {
       status: "success",
       documents: workspace.documents.length,
       baselineRevision: git.headRevision,
-      next: "npx @tokenroll/llmdoc fingerprint --all"
+      next:
+        "npx -y @tokenroll/llmdoc validate && npx -y @tokenroll/llmdoc commit --all -m \"docs: bootstrap llmdoc\""
     };
   }
-  return `initialized llmdoc/meta.json: ${workspace.documents.length} documents (validatedRevision: null), baseline ${git.headRevision.slice(0, 7)}\nnext: 验证文档内容后运行 \`npx @tokenroll/llmdoc fingerprint --all\` 烙印 revision`;
+  return `initialized llmdoc/meta.json: ${workspace.documents.length} documents (validatedRevision: null), baseline ${git.headRevision.slice(0, 7)}\nnext: 先运行 \`npx -y @tokenroll/llmdoc validate\`；全部通过后运行 \`npx -y @tokenroll/llmdoc commit --all -m "docs: bootstrap llmdoc"\` 收尾`;
 }
