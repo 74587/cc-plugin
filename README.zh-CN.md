@@ -240,3 +240,16 @@ npm run check:prompts
   [`update`](skills/update/SKILL.md)、[`prune`](skills/prune/SKILL.md) 和
   [`upgrade`](skills/upgrade/SKILL.md)
 - Runtime reference：`npx -y @tokenroll/llmdoc --help`
+
+## 项目支持
+
+<table>
+<tbody>
+<tr>
+<td align="center">
+<a href="https://linux.do"><img src="./docs/assets/linux-do.png" alt="LINUX DO" width="120"></a>
+<br><sub>社区支持</sub>
+</td>
+</tr>
+</tbody>
+</table>

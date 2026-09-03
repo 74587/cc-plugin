@@ -270,3 +270,16 @@ surfaces, the bilingual READMEs, design documentation, and dogfood knowledge.
   [`update`](skills/update/SKILL.md), [`prune`](skills/prune/SKILL.md), and
   [`upgrade`](skills/upgrade/SKILL.md)
 - Runtime reference: `npx -y @tokenroll/llmdoc --help`
+
+## Project support
+
+<table>
+<tbody>
+<tr>
+<td align="center">
+<a href="https://linux.do"><img src="./docs/assets/linux-do.png" alt="LINUX DO" width="120"></a>
+<br><sub>Community support</sub>
+</td>
+</tr>
+</tbody>
+</table>
